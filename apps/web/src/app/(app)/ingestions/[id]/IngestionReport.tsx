@@ -47,6 +47,7 @@ interface IngestionReportData {
 const TERMINAL_STATUSES = new Set<IngestionStatus>(["SUCCESS", "PARTIAL", "FAILED"]);
 // Voir ADR-009 : polling toutes les 2 secondes, pas de SSE/WebSocket dans ce MVP.
 const POLL_INTERVAL_MS = 2000;
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 50] as const;
 
 export function IngestionReport({
   ingestionId,
@@ -57,31 +58,38 @@ export function IngestionReport({
 }) {
   const [data, setData] = useState(initialData);
   const [page, setPage] = useState(initialData.errors.page);
+  const [pageSize, setPageSize] = useState(initialData.errors.pageSize);
 
   const fetchReport = useCallback(
-    async (targetPage: number) => {
+    async (targetPage: number, targetPageSize: number) => {
       const response = await fetch(
-        `/api/ingestions/${ingestionId}?page=${targetPage}&pageSize=${initialData.errors.pageSize}`,
+        `/api/ingestions/${ingestionId}?page=${targetPage}&pageSize=${targetPageSize}`,
         { cache: "no-store" },
       );
       if (response.ok) {
         setData((await response.json()) as IngestionReportData);
       }
     },
-    [ingestionId, initialData.errors.pageSize],
+    [ingestionId],
   );
 
   useEffect(() => {
     if (TERMINAL_STATUSES.has(data.status)) {
       return;
     }
-    const timer = setInterval(() => void fetchReport(page), POLL_INTERVAL_MS);
+    const timer = setInterval(() => void fetchReport(page, pageSize), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [data.status, page, fetchReport]);
+  }, [data.status, page, pageSize, fetchReport]);
 
   function handlePageChange(nextPage: number) {
     setPage(nextPage);
-    void fetchReport(nextPage);
+    void fetchReport(nextPage, pageSize);
+  }
+
+  function handlePageSizeChange(nextPageSize: number) {
+    setPageSize(nextPageSize);
+    setPage(1);
+    void fetchReport(1, nextPageSize);
   }
 
   const isTerminal = TERMINAL_STATUSES.has(data.status);
@@ -226,11 +234,31 @@ export function IngestionReport({
                 </table>
               </div>
 
-              {data.errors.totalPages > 1 ? (
-                <div className="pagination">
-                  <span className="pagination-info">
-                    Page {data.errors.page} / {data.errors.totalPages}
-                  </span>
+              <div className="pagination">
+                <span className="pagination-info row-2">
+                  {data.errors.totalPages > 1 ? (
+                    <span>
+                      Page {data.errors.page} / {data.errors.totalPages}
+                    </span>
+                  ) : null}
+                  <label className="row-2" htmlFor="errors-page-size">
+                    <span>Lignes par page</span>
+                    <select
+                      id="errors-page-size"
+                      className="select"
+                      style={{ minHeight: 28, height: 28, paddingBlock: 0 }}
+                      value={pageSize}
+                      onChange={(event) => handlePageSizeChange(Number(event.target.value))}
+                    >
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </span>
+                {data.errors.totalPages > 1 ? (
                   <div className="pagination-controls">
                     <button
                       type="button"
@@ -249,8 +277,8 @@ export function IngestionReport({
                       Suivant
                     </button>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </>
           )}
         </div>
