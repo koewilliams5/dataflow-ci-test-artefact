@@ -56,35 +56,45 @@ export function EditSourceForm({ sourceId, initialName, initialDescription }: Ed
   }
 
   return (
-    <form onSubmit={handleSubmit} className="stack">
-      <h2>Modifier la source</h2>
-      <div>
-        <label htmlFor="edit-name">Nom</label>
-        <input
-          id="edit-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
+    <div className="card card-flush">
+      <div className="card-header">
+        <p className="card-title">Modifier la source</p>
       </div>
-      <div>
-        <label htmlFor="edit-description">Description</label>
-        <textarea
-          id="edit-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          rows={2}
-        />
-      </div>
-      {error ? (
-        <p role="alert" className="error-text">
-          {error}
-        </p>
-      ) : null}
-      {success ? <p className="success-text">Enregistré.</p> : null}
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Enregistrement..." : "Enregistrer"}
-      </button>
-    </form>
+      <form onSubmit={handleSubmit} className="card-body stack-3">
+        <div className="field">
+          <label className="label" htmlFor="edit-name">
+            Nom
+          </label>
+          <input
+            className="input"
+            id="edit-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="edit-description">
+            Description
+          </label>
+          <textarea
+            className="textarea"
+            id="edit-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            rows={2}
+          />
+        </div>
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {success ? <p className="form-success">Enregistré.</p> : null}
+        <button type="submit" className="btn btn-secondary" disabled={isSubmitting}>
+          {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+        </button>
+      </form>
+    </div>
   );
 }

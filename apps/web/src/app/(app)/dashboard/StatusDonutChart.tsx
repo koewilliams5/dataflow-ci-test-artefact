@@ -10,10 +10,10 @@ interface StatusDonutChartProps {
 }
 
 const SLICES: { key: keyof StatusDonutChartProps; label: string; color: string }[] = [
-  { key: "success", label: "Succès", color: "#067647" },
-  { key: "partial", label: "Partiel", color: "#b54708" },
-  { key: "failed", label: "Échec", color: "#b42318" },
-  { key: "inProgress", label: "En cours", color: "#2563eb" },
+  { key: "success", label: "Succès", color: "var(--chart-success)" },
+  { key: "partial", label: "Partiel", color: "var(--chart-partial)" },
+  { key: "failed", label: "Échec", color: "var(--chart-failed)" },
+  { key: "inProgress", label: "En cours", color: "var(--chart-processing)" },
 ];
 
 /** Répartition des statuts sur la période — vue "santé globale" en un coup d'œil. */
@@ -24,12 +24,23 @@ export function StatusDonutChart(props: StatusDonutChartProps) {
     color: slice.color,
   })).filter((entry) => entry.value > 0);
 
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
   if (data.length === 0) {
-    return <p className="empty-state">Aucune donnée sur cette période.</p>;
+    return (
+      <div className="empty-state-chart">
+        <span className="empty-state-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+          </svg>
+        </span>
+        <p className="empty-state-text">Aucune donnée sur cette période.</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ width: "100%", height: 260 }}>
+    <div style={{ width: "100%", height: 260, position: "relative" }}>
       <ResponsiveContainer>
         <PieChart>
           <Pie
@@ -41,13 +52,17 @@ export function StatusDonutChart(props: StatusDonutChartProps) {
             paddingAngle={2}
           >
             {data.map((entry) => (
-              <Cell key={entry.name} fill={entry.color} />
+              <Cell key={entry.name} fill={entry.color} stroke="var(--bg-surface)" strokeWidth={2} />
             ))}
           </Pie>
           <Tooltip />
-          <Legend />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
+      <div className="donut-center">
+        <div className="donut-center-value">{total}</div>
+        <div className="donut-center-label">ingestions</div>
+      </div>
     </div>
   );
 }

@@ -7,12 +7,13 @@ interface PeriodSelectorProps {
 
 export function PeriodSelector({ current, options }: PeriodSelectorProps) {
   return (
-    <div className="period-selector">
+    <div className="segmented" role="group" aria-label="Période affichée">
       {options.map((days) => (
         <Link
           key={days}
           href={`/dashboard?days=${days}`}
-          className={days === current ? "badge badge-active" : "badge"}
+          className="segmented-item"
+          aria-pressed={days === current}
         >
           {days} jours
         </Link>

@@ -1,8 +1,7 @@
-export default function HomePage() {
-  return (
-    <main>
-      <h1>DataFlow CI</h1>
-      <p>Plateforme d&apos;ingestion et de validation de fichiers — squelette du monorepo.</p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { auth } from "../auth";
+
+export default async function HomePage() {
+  const session = await auth();
+  redirect(session ? "/dashboard" : "/login");
 }

@@ -15,6 +15,25 @@ const UNAVAILABLE_MESSAGES: Record<string, string> = {
   invalid_response: "Le service IA a renvoyé une réponse inattendue. Réessayez plus tard.",
 };
 
+function SparkleIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M3 12h3M18 12h3M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 /**
  * Bouton à la demande, jamais déclenché automatiquement (voir ADR-034) — le
  * moteur de validation déterministe reste la seule source de vérité, l'IA
@@ -43,22 +62,35 @@ export function DataQualityCopilot({ ingestionId }: { ingestionId: string }) {
   }
 
   return (
-    <div className="anomaly-block">
-      <h2>Copilot qualité de données</h2>
+    <div className="ai-panel">
+      <p className="ai-panel-header">
+        <SparkleIcon />
+        Copilot qualité de données
+      </p>
+
       {state.status === "idle" ? (
-        <>
-          <p className="empty-state">
+        <div className="row-between row-wrap">
+          <p className="text-sm muted grow">
             Génère une explication en langage clair des erreurs les plus fréquentes de ce fichier.
           </p>
-          <button type="button" onClick={() => void handleClick()}>
-            Expliquer les erreurs avec l&apos;IA
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void handleClick()}>
+            <SparkleIcon />
+            Expliquer les erreurs
           </button>
-        </>
+        </div>
       ) : null}
-      {state.status === "loading" ? <p className="loading-state">Analyse en cours…</p> : null}
-      {state.status === "explained" ? <p>{state.explanation}</p> : null}
+
+      {state.status === "loading" ? (
+        <p className="row-2 text-sm muted">
+          <span className="spinner" />
+          Analyse en cours…
+        </p>
+      ) : null}
+
+      {state.status === "explained" ? <p className="text-sm">{state.explanation}</p> : null}
+
       {state.status === "unavailable" ? (
-        <p className="empty-state">
+        <p className="text-sm muted">
           {UNAVAILABLE_MESSAGES[state.reason] ?? "Fonctionnalité IA indisponible pour le moment."}
         </p>
       ) : null}

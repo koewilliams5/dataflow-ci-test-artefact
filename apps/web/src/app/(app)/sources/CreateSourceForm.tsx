@@ -48,35 +48,67 @@ export function CreateSourceForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="stack">
-      <h2>Nouvelle source</h2>
-      <div>
-        <label htmlFor="source-name">Nom</label>
-        <input
-          id="source-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Ventes Orange CI - Hebdo"
-          required
-        />
+    <div className="card card-flush">
+      <div className="card-header">
+        <div>
+          <p className="card-title">Nouvelle source</p>
+          <p className="text-sm muted">Un schéma pourra être défini juste après la création.</p>
+        </div>
       </div>
-      <div>
-        <label htmlFor="source-description">Description (optionnelle)</label>
-        <textarea
-          id="source-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          rows={2}
-        />
-      </div>
+      <form onSubmit={handleSubmit} className="card-body form-inline">
+        <div className="field">
+          <label className="label" htmlFor="source-name">
+            Nom
+          </label>
+          <input
+            className="input"
+            id="source-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Ex. Société Générale — Prélèvements"
+            required
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="source-description">
+            Description <span className="label-hint">(optionnel)</span>
+          </label>
+          <input
+            className="input"
+            id="source-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="Origine, fréquence, format attendu..."
+          />
+        </div>
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <span className="spinner" />
+          ) : (
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          )}
+          Créer la source
+        </button>
+      </form>
       {error ? (
-        <p role="alert" className="error-text">
-          {error}
-        </p>
+        <div className="card-footer">
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        </div>
       ) : null}
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Création..." : "Créer la source"}
-      </button>
-    </form>
+    </div>
   );
 }

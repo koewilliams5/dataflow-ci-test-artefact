@@ -130,45 +130,99 @@ export function SchemaEditor({ sourceId, nextVersionNumber }: SchemaEditorProps)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="stack">
-      <h2>Nouvelle version de schéma</h2>
-
-      <div className="anomaly-block">
-        <label htmlFor="schema-inference-file">
-          Assistant IA (optionnel) : propose un premier jet à partir d&apos;un fichier échantillon —
-          à relire et ajuster avant de créer la version.
-        </label>
-        <input
-          id="schema-inference-file"
-          type="file"
-          accept=".csv,.xlsx"
-          disabled={isInferring}
-          onChange={(event) => void handleInferFromSample(event)}
-        />
-        {isInferring ? <p className="loading-state">Analyse de l&apos;échantillon…</p> : null}
-        {inferenceNotice ? <p className="empty-state">{inferenceNotice}</p> : null}
+    <div className="card card-flush">
+      <div className="card-header">
+        <p className="card-title">Nouvelle version de schéma</p>
       </div>
+      <form onSubmit={handleSubmit} className="card-body stack-3">
+        <div className="ai-panel">
+          <p className="ai-panel-header">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M3 12h3M18 12h3M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            Assistant IA (optionnel)
+          </p>
+          <p className="text-sm muted">
+            Propose un premier jet de schéma à partir d&apos;un fichier échantillon — à relire et
+            ajuster avant de créer la version.
+          </p>
+          <div className="row-2" style={{ marginTop: "var(--space-3)" }}>
+            <label htmlFor="schema-inference-file" className="btn btn-secondary btn-sm">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 3v12" />
+                <path d="m7 8 5-5 5 5" />
+                <path d="M5 21h14" />
+              </svg>
+              Choisir un fichier échantillon
+            </label>
+            <input
+              id="schema-inference-file"
+              type="file"
+              accept=".csv,.xlsx"
+              disabled={isInferring}
+              onChange={(event) => void handleInferFromSample(event)}
+              className="sr-only"
+            />
+            {isInferring ? (
+              <span className="row-2 text-sm muted">
+                <span className="spinner" />
+                Analyse de l&apos;échantillon…
+              </span>
+            ) : null}
+          </div>
+          {inferenceNotice ? (
+            <p className="text-sm muted" style={{ marginTop: "var(--space-2)" }}>
+              {inferenceNotice}
+            </p>
+          ) : null}
+        </div>
 
-      <label htmlFor="schema-definition">
-        Sera automatiquement la version v{nextVersionNumber} et deviendra la version active de cette
-        source.
-      </label>
-      <textarea
-        id="schema-definition"
-        className="code-textarea"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        rows={16}
-        spellCheck={false}
-      />
-      {error ? (
-        <p role="alert" className="error-text">
-          {error}
-        </p>
-      ) : null}
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Création..." : "Créer cette version"}
-      </button>
-    </form>
+        <div className="field">
+          <label className="label" htmlFor="schema-definition">
+            Définition JSON
+            <span className="label-hint">
+              — sera la version v{nextVersionNumber}, active dès la création
+            </span>
+          </label>
+          <textarea
+            id="schema-definition"
+            className="textarea textarea-code"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={16}
+            spellCheck={false}
+          />
+        </div>
+        {error ? (
+          <p role="alert" className="form-error">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? "Création..." : "Créer cette version"}
+        </button>
+      </form>
+    </div>
   );
 }

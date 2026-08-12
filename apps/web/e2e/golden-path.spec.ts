@@ -38,7 +38,7 @@ test("login → création source → schéma → upload → rapport", async ({ p
   await test.step("connexion avec le compte de démonstration", async () => {
     await page.goto("/login");
     await waitForHydration(page);
-    await page.getByLabel("Email").fill("demo@dataflow-ci.com");
+    await page.getByLabel("Adresse e-mail").fill("demo@dataflow-ci.com");
     await page.getByLabel("Mot de passe").fill("password123");
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page).toHaveURL(/\/dashboard/);

@@ -13,11 +13,11 @@ import {
 import type { DailySeriesPoint } from "../../../lib/dashboard/buildDailyStatusSeries";
 
 const STATUS_COLORS: Record<keyof Omit<DailySeriesPoint, "date">, string> = {
-  SUCCESS: "#067647",
-  PARTIAL: "#b54708",
-  FAILED: "#b42318",
-  PENDING: "#98a2b3",
-  PROCESSING: "#2563eb",
+  SUCCESS: "var(--chart-success)",
+  PARTIAL: "var(--chart-partial)",
+  FAILED: "var(--chart-failed)",
+  PENDING: "var(--chart-pending)",
+  PROCESSING: "var(--chart-processing)",
 };
 
 const STATUS_LABELS: Record<keyof Omit<DailySeriesPoint, "date">, string> = {
@@ -36,11 +36,21 @@ export function DailyIngestionsChart({ data }: { data: DailySeriesPoint[] }) {
     <div style={{ width: "100%", height: 280 }}>
       <ResponsiveContainer>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
-          <Legend />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+            axisLine={{ stroke: "var(--chart-grid)" }}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip cursor={{ fill: "var(--chart-cursor)" }} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
           {STATUS_KEYS.map((status) => (
             <Bar
               key={status}

@@ -15,11 +15,24 @@ export function TopSourcesChart({ data }: { data: TopSourceDatum[] }) {
     <div style={{ width: "100%", height: Math.max(200, data.length * 50) }}>
       <ResponsiveContainer>
         <BarChart data={data} layout="vertical" margin={{ left: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" allowDecimals={false} />
-          <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Bar dataKey="ingestionCount" name="Ingestions" fill="#2563eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={160}
+            tick={{ fontSize: 12, fill: "var(--chart-axis)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip cursor={{ fill: "var(--chart-cursor)" }} />
+          <Bar dataKey="ingestionCount" name="Ingestions" fill="var(--chart-accent)" radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

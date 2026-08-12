@@ -9,11 +9,11 @@ const LABELS: Record<IngestionStatus, string> = {
 };
 
 const CLASS_NAMES: Record<IngestionStatus, string> = {
-  PENDING: "badge",
-  PROCESSING: "badge",
+  PENDING: "badge badge-pending",
+  PROCESSING: "badge badge-processing",
   SUCCESS: "badge badge-success",
-  PARTIAL: "badge badge-warning",
-  FAILED: "badge badge-danger",
+  PARTIAL: "badge badge-partial",
+  FAILED: "badge badge-failed",
 };
 
 export function IngestionStatusBadge({ status }: { status: IngestionStatus }) {
