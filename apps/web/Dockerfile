@@ -39,32 +39,24 @@ COPY --from=pruner /app/out/full/ .
 # avant tout typecheck/build qui importe @dataflow-ci/database.
 RUN pnpm --filter @dataflow-ci/database exec prisma generate
 
-# `next build` charge packages/config au chargement du module (voir apps/web/src/env.ts)
-# et valide donc ces variables PENDANT le build, pas seulement à l'exécution —
-# elles doivent donc être présentes ici, pas seulement dans l'étape runtime
-# ci-dessous. Railway (et tout builder Docker respectant le standard) fournit
-# automatiquement la valeur de tout ARG dont le nom correspond à une variable
-# du service (voir DEPLOYMENT.md) — aucune valeur n'est codée en dur ici.
-ARG DATABASE_URL
-ARG REDIS_URL
-ARG S3_ENDPOINT
-ARG S3_REGION
-ARG S3_BUCKET
-ARG S3_ACCESS_KEY_ID
-ARG S3_SECRET_ACCESS_KEY
-ARG S3_FORCE_PATH_STYLE
-ARG AUTH_SECRET
-ARG AUTH_URL
-ENV DATABASE_URL=$DATABASE_URL \
-    REDIS_URL=$REDIS_URL \
-    S3_ENDPOINT=$S3_ENDPOINT \
-    S3_REGION=$S3_REGION \
-    S3_BUCKET=$S3_BUCKET \
-    S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID \
-    S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY \
-    S3_FORCE_PATH_STYLE=$S3_FORCE_PATH_STYLE \
-    AUTH_SECRET=$AUTH_SECRET \
-    AUTH_URL=$AUTH_URL
+# `next build` importe apps/web/src/env.ts (via auth.ts, chargé pour TOUTES les
+# routes afin que Next construise son manifeste — même les routes dynamiques,
+# jamais réellement exécutées au build) : la validation Zod tourne donc
+# pendant le build, dans un process Node jetable, séparé du vrai serveur.
+# Ces valeurs ne servent qu'à satisfaire la forme attendue par le schéma —
+# elles ne sont ni de vrais secrets, ni utilisées pour une connexion réelle
+# (aucune requête DB/Redis/S3 n'a lieu au build). Le vrai serveur, démarré à
+# l'étape runtime ci-dessous, réexécute ce même module avec les véritables
+# variables d'environnement injectées par la plateforme d'hébergement.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    REDIS_URL="redis://localhost:6379" \
+    S3_ENDPOINT="http://localhost:9000" \
+    S3_REGION="auto" \
+    S3_BUCKET="build-placeholder" \
+    S3_ACCESS_KEY_ID="build-placeholder" \
+    S3_SECRET_ACCESS_KEY="build-placeholder" \
+    S3_FORCE_PATH_STYLE="true" \
+    AUTH_SECRET="build-time-placeholder-not-a-real-secret-32c"
 
 RUN pnpm turbo run build --filter=web...
 
