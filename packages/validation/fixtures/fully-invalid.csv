@@ -1,0 +1,4 @@
+date,region,montant_fcfa,client_id
+pas-une-date,Paris,-100,42
+autre,Marseille,abc,CLI-1
+,Lyon,0,CLI-2

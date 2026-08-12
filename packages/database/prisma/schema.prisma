@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Politique de suppression (voir DESIGN.md / DECISIONS.md) : toutes les relations
+// ci-dessous sont en onDelete: Restrict, sauf IngestionError -> Ingestion
+// (Cascade). Raison : la traçabilité est la raison d'être de ce système, donc une
+// ligne qui porte de l'historique (source, version de schéma, ingestion,
+// utilisateur) ne peut jamais être effacée silencieusement en supprimant ce à
+// quoi elle est rattachée. IngestionError est la seule exception car elle n'a
+// aucun sens indépendamment de son Ingestion.
+// -----------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  dataSources    DataSource[]    @relation("DataSourceCreatedBy")
+  schemaVersions SchemaVersion[] @relation("SchemaVersionCreatedBy")
+  ingestions     Ingestion[]     @relation("IngestionCreatedBy")
+
+  @@map("users")
+}
+
+model DataSource {
+  id                     String   @id @default(uuid()) @db.Uuid
+  name                   String
+  description            String?
+  currentSchemaVersionId String?  @unique @db.Uuid
+  createdById            String   @db.Uuid
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  createdBy            User            @relation("DataSourceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  // Version actuellement utilisée pour valider les nouveaux uploads de cette
+  // source. Nullable : une source peut exister avant sa première version.
+  currentSchemaVersion SchemaVersion?  @relation("DataSourceCurrentVersion", fields: [currentSchemaVersionId], references: [id], onDelete: Restrict)
+  // Historique complet de toutes les versions jamais créées (immuables une fois créées).
+  schemaVersions       SchemaVersion[] @relation("DataSourceVersions")
+  ingestions           Ingestion[]
+
+  @@index([createdById])
+  @@map("data_sources")
+}
+
+model SchemaVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  dataSourceId  String   @db.Uuid
+  versionNumber Int
+  // Colonnes (nom, type, contraintes). Validé par packages/domain
+  // (schemaDefinitionSchema, Zod) avant chaque écriture — Postgres stocke en
+  // jsonb, Zod est le contrat réel. Pas d'updatedAt volontairement : une version
+  // est immuable une fois créée (voir contrainte métier ci-dessous).
+  definition    Json     @db.JsonB
+  createdById   String   @db.Uuid
+  createdAt     DateTime @default(now())
+
+  dataSource       DataSource  @relation("DataSourceVersions", fields: [dataSourceId], references: [id], onDelete: Restrict)
+  createdBy        User        @relation("SchemaVersionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  // Pendant de DataSource.currentSchemaVersion — une version n'est "courante"
+  // que pour au plus une source (en pratique, la sienne).
+  currentForSource DataSource? @relation("DataSourceCurrentVersion")
+  ingestions       Ingestion[]
+
+  // Garantit "numéro de version unique dans une source" et sert aussi d'index de
+  // recherche pour "toutes les versions de cette source" (règle du préfixe
+  // gauche — pas besoin d'un @@index([dataSourceId]) séparé).
+  @@unique([dataSourceId, versionNumber])
+  @@map("schema_versions")
+}
+
+enum IngestionStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+model Ingestion {
+  id                    String          @id @default(uuid()) @db.Uuid
+  dataSourceId          String          @db.Uuid
+  // La version de schéma exacte utilisée pour valider le fichier — figée à la
+  // création, jamais recalculée même si la source change de version courante.
+  schemaVersionId       String          @db.Uuid
+  createdById           String          @db.Uuid
+  originalFilename      String
+  originalFileKey       String
+  validFileKey          String?
+  // Hash du contenu du fichier (SHA-256) — permet de détecter le ré-upload exact
+  // du même fichier sur la même source (voir @@index ci-dessous).
+  checksum              String
+  status                IngestionStatus @default(PENDING)
+  totalRows             Int             @default(0)
+  validRows             Int             @default(0)
+  invalidRows           Int             @default(0)
+  processingStartedAt   DateTime?
+  processingCompletedAt DateTime?
+  failureReason         String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  dataSource    DataSource            @relation(fields: [dataSourceId], references: [id], onDelete: Restrict)
+  schemaVersion SchemaVersion         @relation(fields: [schemaVersionId], references: [id], onDelete: Restrict)
+  createdBy     User                  @relation("IngestionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  errors        IngestionError[]
+  columnStats   IngestionColumnStat[]
+
+  @@index([dataSourceId, createdAt])
+  @@index([schemaVersionId])
+  @@index([status])
+  @@index([dataSourceId, checksum])
+  @@map("ingestions")
+}
+
+model IngestionError {
+  id          String   @id @default(uuid()) @db.Uuid
+  ingestionId String   @db.Uuid
+  rowNumber   Int
+  columnName  String?
+  // Code machine-lisible (ex. "REQUIRED_VALUE", "INVALID_FORMAT",
+  // "DUPLICATE_ROW") — chaîne libre plutôt qu'un enum : le jeu de règles de
+  // validation n'est pas encore figé, ajouter une règle ne doit pas nécessiter
+  // de migration.
+  errorCode   String
+  message     String
+  rawValue    String?
+  createdAt   DateTime @default(now())
+
+  // Cascade est délibéré ici, contrairement au reste du schéma : une erreur n'a
+  // aucun sens sans son ingestion.
+  ingestion Ingestion @relation(fields: [ingestionId], references: [id], onDelete: Cascade)
+
+  // Couvre "toutes les erreurs d'une ingestion" et "...triées par numéro de
+  // ligne" (notre seul pattern de lecture) via la règle du préfixe gauche — pas
+  // besoin d'un @@index([ingestionId]) séparé.
+  @@index([ingestionId, rowNumber])
+  @@map("ingestion_errors")
+}
+
+// Statistiques agrégées (pas de valeurs individuelles — voir ADR-038) par colonne
+// numérique d'une ingestion, calculées en une seule passe pendant la validation.
+// Sert à la détection d'anomalies (ADR-037) : comparer une nouvelle ingestion à
+// l'historique de sa source, colonne par colonne, sans jamais avoir besoin de
+// relire les données individuelles du fichier.
+model IngestionColumnStat {
+  id          String   @id @default(uuid()) @db.Uuid
+  ingestionId String   @db.Uuid
+  columnName  String
+  count       Int
+  mean        Float
+  min         Float
+  max         Float
+  stddev      Float
+  createdAt   DateTime @default(now())
+
+  // Cascade comme IngestionError : une statistique n'a aucun sens sans son ingestion.
+  ingestion Ingestion @relation(fields: [ingestionId], references: [id], onDelete: Cascade)
+
+  @@unique([ingestionId, columnName])
+  @@map("ingestion_column_stats")
+}

@@ -1,0 +1,17 @@
+{
+  "columns": [
+    { "name": "date", "type": "date", "required": true, "dateFormat": "YYYY-MM-DD" },
+    {
+      "name": "region",
+      "type": "string",
+      "required": true,
+      "allowedValues": ["Abidjan", "Bouaké", "Daloa"]
+    },
+    { "name": "montant_fcfa", "type": "integer", "required": true, "positive": true },
+    { "name": "client_id", "type": "string", "required": true, "pattern": "^CLI-\\d{6}$" }
+  ],
+  "allowExtraColumns": false,
+  "trimStrings": true,
+  "caseSensitiveHeaders": false,
+  "duplicateKeyColumns": ["client_id", "date"]
+}

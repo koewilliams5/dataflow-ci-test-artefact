@@ -1,0 +1,18 @@
+{
+  "columns": [
+    { "name": "compte_id", "type": "string", "required": true, "pattern": "^ACC-\\d{8}$" },
+    {
+      "name": "devise",
+      "type": "string",
+      "required": true,
+      "allowedValues": ["XOF", "EUR", "USD"]
+    },
+    { "name": "solde", "type": "number", "required": true },
+    { "name": "date_releve", "type": "date", "required": true, "dateFormat": "YYYY-MM-DD" },
+    { "name": "actif", "type": "boolean", "required": false }
+  ],
+  "allowExtraColumns": false,
+  "trimStrings": true,
+  "caseSensitiveHeaders": false,
+  "duplicateKeyColumns": ["compte_id", "date_releve"]
+}

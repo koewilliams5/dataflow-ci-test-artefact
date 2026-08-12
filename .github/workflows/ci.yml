@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `prisma generate` (déclenché automatiquement par `^build` dans
+      # turbo.json en amont de typecheck/lint/test) ne nécessite pas de vraie
+      # base de données — il lit uniquement prisma/schema.prisma.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit & integration tests (mocked — pas de base/queue/stockage réels requis)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  # Les tests e2e Playwright (apps/web/e2e/) nécessitent une infrastructure
+  # complète démarrée (Postgres/Redis/MinIO migrés+seedés, web ET worker) —
+  # non exécutés dans cette CI pour l'instant (voir TASKS.md T42, DESIGN.md
+  # "Next steps"). À activer via un job séparé avec des services Postgres/
+  # Redis/MinIO (`services:` GitHub Actions) une fois le déploiement en place.
