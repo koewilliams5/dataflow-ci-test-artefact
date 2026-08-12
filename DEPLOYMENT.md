@@ -33,8 +33,8 @@ docker build -f apps/web/Dockerfile -t dataflow-ci-web .
 docker build -f apps/worker/Dockerfile -t dataflow-ci-worker .
 ```
 
-**Non vérifié sur cette machine** (Docker indisponible) — à valider en premier dès que Docker est
-disponible, avant toute tentative de déploiement réel.
+**Vérifié** : les deux images se construisent et démarrent correctement (build local complet avant
+chaque déploiement réel sur Railway, voir §5).
 
 ## 3. Variables d'environnement / secrets requis
 

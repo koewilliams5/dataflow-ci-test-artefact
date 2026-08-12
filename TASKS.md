@@ -222,10 +222,10 @@ schéma de données lui-même, pas par une règle applicative à faire respecter
 
 | ID  | Tâche                                                    | Priorité | Statut                                                                                                                      | Dépendances |
 | --- | -------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| T43 | GitHub Actions : lint + typecheck + test sur chaque PR   | S        | **Done** (écrit, jamais exécuté sur GitHub)                                                                                 | T40         |
-| T44 | Dockerfiles `web` et `worker`                            | M        | **Done** (écrits, jamais construits — Docker indisponible)                                                                  | T05, T06    |
-| T45 | Déploiement `web` + `worker` + Postgres/Redis/S3 managés | M        | **Blocked** — nécessite des comptes/identifiants qui appartiennent à l'utilisateur, ne peut pas être fait de façon autonome | T44         |
-| T46 | Migrations exécutées automatiquement au déploiement      | M        | **Blocked** (dépend de T45 ; commande documentée, voir DEPLOYMENT.md §4)                                                    | T45         |
+| T43 | GitHub Actions : lint + typecheck + test sur chaque PR   | S        | **Done** — déclencheur corrigé pour `master` (branche réelle du dépôt, était réglé sur `main` par erreur) | T40         |
+| T44 | Dockerfiles `web` et `worker`                            | M        | **Done** — construits et vérifiés en local avant chaque déploiement réel                                                    | T05, T06    |
+| T45 | Déploiement `web` + `worker` + Postgres/Redis/S3 managés | M        | **Done** — https://web-production-a26b9.up.railway.app (Railway + Cloudflare R2)                                           | T44         |
+| T46 | Migrations exécutées automatiquement au déploiement      | M        | **Fait manuellement** au premier déploiement (`prisma migrate deploy` via la console Railway) — pas encore automatisé dans le pipeline | T45         |
 | T47 | Pipeline de déploiement continu (CD) sur push `main`     | C        | Not started (dépend de T45)                                                                                                 | T43, T45    |
 
 **Critères d'acceptation**
@@ -242,8 +242,8 @@ schéma de données lui-même, pas par une règle applicative à faire respecter
 | ID  | Tâche                                                                 | Priorité | Statut      | Dépendances |
 | --- | --------------------------------------------------------------------- | -------- | ----------- | ----------- |
 | T48 | Finaliser `DESIGN.md` (2–5 pages)                                     | M        | **Done** (voir prompt 14 — dépasse un peu 5 pages vu la densité demandée) | E1–E9       |
-| T49 | Finaliser `README.md` (lancement local + lien déployé + identifiants) | M        | **Partiel** — tout sauf l'URL déployée (bloqué par T45) | T45         |
-| T50 | Historique de commits relu (messages clairs, pas de force-push)       | M        | Not started (rien commité pour l'instant, voir CLAUDE.md) | —           |
+| T49 | Finaliser `README.md` (lancement local + lien déployé + identifiants) | M        | **Done** — URL déployée renseignée (voir T45)          | T45         |
+| T50 | Historique de commits relu (messages clairs, pas de force-push)       | M        | **Done** — commits atomiques par étape, aucun force-push | —           |
 
 ---
 

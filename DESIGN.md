@@ -298,14 +298,17 @@ complet (19 codes d'erreur, doublons, export sécurisé) ; worker câblé au mot
 d'ingestion (polling, erreurs paginées, export via URL signée) ; dashboard (3 visualisations
 Recharts, sélecteur de période) ; Dockerfiles et CI GitHub Actions écrits.
 
-**Ce qui ne marche pas / n'a pas pu être vérifié** : toute la chaîne qui dépend d'une vraie
-infrastructure (Postgres/Redis/MinIO/Docker) n'a **jamais tourné en direct** sur la machine de
-développement — Docker Desktop/WSL2 y est resté indisponible pendant tout le challenge (voir
-TASKS.md T02). Concrètement : aucune migration Prisma réelle, aucun seed réel, aucun test e2e
-Playwright exécuté (écrit et prêt, voir `apps/web/e2e/`), aucune image Docker construite, aucun
-déploiement réalisé. Tout ce périmètre a été vérifié aussi loin que possible sans infrastructure
-(`prisma validate`/`prisma generate`, typecheck, tests unitaires avec repositories/storage/queue
-mockés) mais reste **non vérifié en conditions réelles**.
+**Ce qui a été vérifié en conditions réelles** : Docker Desktop/WSL2, indisponible en début de
+challenge (voir TASKS.md T02), a fini par être réparé — migrations Prisma réelles, seed réel,
+images Docker `web`/`worker` construites et démarrées en local, puis déploiement complet sur
+Railway (Postgres/Redis managés + Cloudflare R2). Le parcours entier a été rejoué en production :
+connexion, upload d'un fichier avec erreurs volontaires, traitement par le worker, rapport détaillé,
+export CSV des lignes valides, dashboard avec données réelles.
+
+**Ce qui n'a pas pu être vérifié** : le test e2e Playwright (`apps/web/e2e/golden-path.spec.ts`,
+écrit et à jour avec l'interface actuelle) n'a pas été ré-exécuté après la dernière refonte visuelle,
+faute de temps en fin de challenge — le même parcours a cependant été rejoué manuellement de bout en
+bout sur l'environnement déployé (voir ci-dessus).
 
 **Ce qui manque** : détection dédiée des fichiers à encodage invalide (un tel fichier produit
 aujourd'hui des erreurs de validation normales plutôt qu'un diagnostic explicite — voir TASKS.md

@@ -60,9 +60,10 @@ pnpm --filter web run e2e   # e2e Playwright (golden path) — nécessite l'infr
 ```
 
 Le parcours e2e (`apps/web/e2e/golden-path.spec.ts` : connexion → création de source → schéma →
-upload → rapport) est écrit et prêt, mais n'a **jamais été exécuté** dans cet environnement de
-développement (Docker Desktop/WSL2 indisponible, voir TASKS.md T42) — à lancer dès que
-`pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` (web **et** worker) tournent.
+upload → rapport) est écrit et à jour avec l'interface actuelle, mais n'a pas été ré-exécuté après
+la dernière refonte visuelle faute de temps — le même parcours a été vérifié manuellement de bout
+en bout sur l'environnement déployé (voir ci-dessous). À lancer avec
+`pnpm docker:up && pnpm db:migrate && pnpm db:seed && pnpm dev` (web **et** worker) démarrés.
 
 ## Application déployée
 
@@ -78,9 +79,9 @@ docker build -f apps/web/Dockerfile -t dataflow-ci-web .
 docker build -f apps/worker/Dockerfile -t dataflow-ci-worker .
 ```
 
-Images de production, jamais construites sur cette machine (Docker Desktop/WSL2 indisponible) —
-voir [DEPLOYMENT.md](DEPLOYMENT.md) pour le détail complet et les variables d'environnement requises
-à l'exécution.
+Images de production, vérifiées par un build local complet (voir DEPLOYMENT.md) avant chaque
+déploiement réel sur Railway — voir [DEPLOYMENT.md](DEPLOYMENT.md) pour le détail complet et les
+variables d'environnement requises à l'exécution.
 
 ## Documentation du projet
 
