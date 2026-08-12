@@ -38,34 +38,11 @@ COPY --from=pruner /app/out/full/ .
 # Le client Prisma est généré à partir du schéma, pas committé — nécessaire
 # avant tout typecheck/build qui importe @dataflow-ci/database.
 RUN pnpm --filter @dataflow-ci/database exec prisma generate
-
-# `next build` importe apps/web/src/env.ts (via auth.ts, chargé pour TOUTES les
-# routes afin que Next construise son manifeste — même les routes dynamiques,
-# jamais réellement exécutées au build) : la validation Zod tourne donc
-# pendant le build, dans un process Node jetable, séparé du vrai serveur.
-# Ces valeurs ne servent qu'à satisfaire la forme attendue par le schéma —
-# elles ne sont ni de vrais secrets, ni utilisées pour une connexion réelle
-# (aucune requête DB/Redis/S3 n'a lieu au build). Le vrai serveur, démarré à
-# l'étape runtime ci-dessous, réexécute ce même module avec les véritables
-# variables d'environnement injectées par la plateforme d'hébergement.
-ENV DATABASE_URL="postgresql://build:build@localhost:5432/build" \
-    REDIS_URL="redis://localhost:6379" \
-    S3_ENDPOINT="http://localhost:9000" \
-    S3_REGION="auto" \
-    S3_BUCKET="build-placeholder" \
-    S3_ACCESS_KEY_ID="build-placeholder" \
-    S3_SECRET_ACCESS_KEY="build-placeholder" \
-    S3_FORCE_PATH_STYLE="true" \
-    AUTH_SECRET="build-time-placeholder-not-a-real-secret-32c"
-
-# Diagnostic temporaire : nom sans collision avec une Service Variable
-# Railway, pour vérifier si le problème vient d'une collision de nom.
-ENV DEBUG_NO_COLLISION_TEST="hello-world"
-
-# Diagnostic temporaire : confirme si les variables ci-dessus sont bien
-# visibles à ce stade du build (à retirer une fois le déploiement stabilisé).
-RUN echo "=== DEBUG build-time env ===" && env | grep -E "DATABASE_URL|REDIS_URL|S3_|AUTH_SECRET|DEBUG_NO_COLLISION_TEST" | sed 's/=.*/=<redacted>/' && echo "=== END DEBUG ==="
-
+# apps/web/src/env.ts détecte lui-même la phase de build (NEXT_PHASE) et
+# utilise des valeurs factices pour la validation Zod à ce moment-là — voir
+# ce fichier pour le détail. Aucune variable d'environnement réelle n'est
+# donc nécessaire ici : le vrai serveur (étape runtime ci-dessous) les relit
+# depuis la plateforme d'hébergement à son démarrage.
 RUN pnpm turbo run build --filter=web...
 
 # ---- 4. Runtime ----
