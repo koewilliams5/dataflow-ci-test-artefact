@@ -38,6 +38,34 @@ COPY --from=pruner /app/out/full/ .
 # Le client Prisma est généré à partir du schéma, pas committé — nécessaire
 # avant tout typecheck/build qui importe @dataflow-ci/database.
 RUN pnpm --filter @dataflow-ci/database exec prisma generate
+
+# `next build` charge packages/config au chargement du module (voir apps/web/src/env.ts)
+# et valide donc ces variables PENDANT le build, pas seulement à l'exécution —
+# elles doivent donc être présentes ici, pas seulement dans l'étape runtime
+# ci-dessous. Railway (et tout builder Docker respectant le standard) fournit
+# automatiquement la valeur de tout ARG dont le nom correspond à une variable
+# du service (voir DEPLOYMENT.md) — aucune valeur n'est codée en dur ici.
+ARG DATABASE_URL
+ARG REDIS_URL
+ARG S3_ENDPOINT
+ARG S3_REGION
+ARG S3_BUCKET
+ARG S3_ACCESS_KEY_ID
+ARG S3_SECRET_ACCESS_KEY
+ARG S3_FORCE_PATH_STYLE
+ARG AUTH_SECRET
+ARG AUTH_URL
+ENV DATABASE_URL=$DATABASE_URL \
+    REDIS_URL=$REDIS_URL \
+    S3_ENDPOINT=$S3_ENDPOINT \
+    S3_REGION=$S3_REGION \
+    S3_BUCKET=$S3_BUCKET \
+    S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID \
+    S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY \
+    S3_FORCE_PATH_STYLE=$S3_FORCE_PATH_STYLE \
+    AUTH_SECRET=$AUTH_SECRET \
+    AUTH_URL=$AUTH_URL
+
 RUN pnpm turbo run build --filter=web...
 
 # ---- 4. Runtime ----
