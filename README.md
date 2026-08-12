@@ -66,11 +66,10 @@ développement (Docker Desktop/WSL2 indisponible, voir TASKS.md T42) — à lanc
 
 ## Application déployée
 
-**[À COMPLÉTER]** — URL ajoutée une fois le déploiement effectué. Les identifiants de démonstration
-ci-dessus seront valables sur l'environnement déployé. Procédure complète (hébergement recommandé,
+**https://web-production-a26b9.up.railway.app** — déployé sur Railway (`web` + `worker` + Postgres +
+Redis managés, stockage Cloudflare R2). Identifiants de démonstration ci-dessus valables sur cet
+environnement (`demo@dataflow-ci.com` / `password123`). Procédure complète (hébergement,
 variables d'environnement/secrets, migrations, ordre des étapes) : [DEPLOYMENT.md](DEPLOYMENT.md).
-Nécessite des comptes chez un hébergeur (Postgres/Redis/stockage managés) appartenant à
-l'utilisateur — non fait de façon autonome, voir TASKS.md T45.
 
 ## Docker
 

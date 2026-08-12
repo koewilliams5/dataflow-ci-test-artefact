@@ -1,9 +1,9 @@
 # DEPLOYMENT.md — Guide de déploiement
 
-> **Statut** : préparé mais jamais exécuté sur un environnement réel — Docker Desktop/WSL2 est resté
-> indisponible sur la machine de développement pendant tout le challenge (voir TASKS.md T02), donc
-> aucune image Docker n'a pu être construite ni testée, et aucun déploiement n'a été effectué. Ce
-> document décrit la procédure prête à suivre, pas un déploiement déjà réalisé.
+> **Statut** : déployé sur Railway — https://web-production-a26b9.up.railway.app (`web` + `worker` +
+> Postgres + Redis managés, stockage Cloudflare R2). Docker Desktop/WSL2, indisponible pendant une
+> bonne partie du développement (voir TASKS.md T02), a fini par être réparé et les deux images ont
+> été construites et vérifiées localement avant le déploiement réel décrit ci-dessous.
 
 ## 1. Vue d'ensemble
 
