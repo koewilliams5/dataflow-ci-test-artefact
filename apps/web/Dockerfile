@@ -58,9 +58,13 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build" \
     S3_FORCE_PATH_STYLE="true" \
     AUTH_SECRET="build-time-placeholder-not-a-real-secret-32c"
 
+# Diagnostic temporaire : nom sans collision avec une Service Variable
+# Railway, pour vérifier si le problème vient d'une collision de nom.
+ENV DEBUG_NO_COLLISION_TEST="hello-world"
+
 # Diagnostic temporaire : confirme si les variables ci-dessus sont bien
 # visibles à ce stade du build (à retirer une fois le déploiement stabilisé).
-RUN echo "=== DEBUG build-time env ===" && env | grep -E "DATABASE_URL|REDIS_URL|S3_|AUTH_SECRET" | sed 's/=.*/=<redacted>/' && echo "=== END DEBUG ==="
+RUN echo "=== DEBUG build-time env ===" && env | grep -E "DATABASE_URL|REDIS_URL|S3_|AUTH_SECRET|DEBUG_NO_COLLISION_TEST" | sed 's/=.*/=<redacted>/' && echo "=== END DEBUG ==="
 
 RUN pnpm turbo run build --filter=web...
 
