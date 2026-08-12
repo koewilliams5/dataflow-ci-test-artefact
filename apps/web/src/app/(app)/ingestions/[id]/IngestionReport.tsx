@@ -62,6 +62,7 @@ export function IngestionReport({
     async (targetPage: number) => {
       const response = await fetch(
         `/api/ingestions/${ingestionId}?page=${targetPage}&pageSize=${initialData.errors.pageSize}`,
+        { cache: "no-store" },
       );
       if (response.ok) {
         setData((await response.json()) as IngestionReportData);

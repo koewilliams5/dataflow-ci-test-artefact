@@ -276,8 +276,8 @@ export async function getHistoricalColumnStatsSummary(
       STDDEV(ics.mean)::float AS "stddevMean"
     FROM ingestion_column_stats ics
     JOIN ingestions i ON i.id = ics."ingestionId"
-    WHERE i."dataSourceId" = ${dataSourceId}
-      AND ics."ingestionId" != ${excludeIngestionId}
+    WHERE i."dataSourceId" = ${dataSourceId}::uuid
+      AND ics."ingestionId" != ${excludeIngestionId}::uuid
     GROUP BY ics."columnName"
   `;
 }
