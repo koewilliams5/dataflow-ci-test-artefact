@@ -1314,13 +1314,15 @@ table tbody tr:hover, .table tbody tr:hover { background: var(--bg-hover); }
 .input-group { position: relative; display: flex; align-items: center; }
 .input-group .input { padding-right: 40px; }
 .input-affix {
-  position: absolute; right: 4px;
+  position: absolute; right: 4px; top: 50%;
+  transform: translateY(-50%);
   display: grid; place-items: center;
   width: 30px; height: 30px;
   border: 0; background: transparent;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  z-index: 1;
 }
 .input-affix:hover { color: var(--text-primary); background: var(--bg-hover); }
 

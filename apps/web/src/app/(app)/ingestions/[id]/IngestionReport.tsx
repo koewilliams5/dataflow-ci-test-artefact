@@ -111,7 +111,8 @@ export function IngestionReport({
           <h1 className="page-title mono">{data.originalFilename}</h1>
           <p className="page-subtitle">
             {data.schemaVersionNumber !== null ? `Schéma v${data.schemaVersionNumber} · ` : ""}
-            reçu le {new Date(data.createdAt).toLocaleString("fr-FR")}
+            reçu le{" "}
+            {new Date(data.createdAt).toLocaleString("fr-FR", { timeZone: "Africa/Abidjan" })}
           </p>
         </div>
         {data.hasExport ? (
