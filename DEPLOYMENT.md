@@ -72,6 +72,18 @@ nouvelles ni demander de confirmation interactive — c'est la commande adaptée
 À exécuter une fois par déploiement, avant de basculer le trafic vers la nouvelle version (ou comme
 étape dédiée du pipeline de déploiement, avant le démarrage des nouveaux conteneurs).
 
+**Piège Railway Console, trouvé le 2026-08-13** : le shell interactif ("Console") d'un service
+Railway se connecte au conteneur du déploiement **actif au moment de l'ouverture** — si un nouveau
+déploiement est encore en cours de build (badge "Building" sur la carte du service), la Console
+reste attachée à l'ancien conteneur, avec l'ancien jeu de fichiers de migration. Lancer `migrate
+deploy` dans cet état affiche "No pending migrations to apply" de façon totalement silencieuse et
+non-erronée, alors que la migration du nouveau déploiement n'a en réalité jamais été appliquée —
+symptôme observé : la base de production plante en `P2022` ("column does not exist") dès que le
+nouveau conteneur bascule en trafic live. Toujours vérifier que le déploiement visé est bien
+"Online"/actif (pas "Building") avant de lancer une migration via Console, et si un doute subsiste,
+relancer la commande une fois le déploiement effectivement en ligne — `migrate deploy` est idempotent,
+la relancer ne fait jamais de mal.
+
 Le seed (`pnpm db:seed`) ne doit être exécuté qu'une fois, à la création de l'environnement — pas à
 chaque déploiement (il recréerait le compte de démonstration inutilement ; `upsert` le rend
 idempotent mais reste un compte de démo, pas un vrai provisioning utilisateur).
