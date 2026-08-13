@@ -1318,13 +1318,15 @@ table tbody tr:hover, .table tbody tr:hover { background: var(--bg-hover); }
   transform: translateY(-50%);
   display: grid; place-items: center;
   width: 30px; height: 30px;
-  border: 0; background: transparent;
+  border: var(--border-w) solid var(--border-default);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   z-index: 1;
 }
-.input-affix:hover { color: var(--text-primary); background: var(--bg-hover); }
+.input-affix svg { color: inherit; }
+.input-affix:hover { color: var(--text-primary); background: var(--bg-hover); border-color: var(--border-strong); }
 
 .fade-in { animation: df-fade-in var(--duration-slow) var(--ease-out) both; }
 @keyframes df-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
