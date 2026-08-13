@@ -19,7 +19,8 @@ recrutement Artefact CI — construit un MVP qui automatise ce contrôle :
 6. Un **dashboard** monitore l'activité globale.
 
 Voir [DESIGN.md](DESIGN.md) pour le raisonnement produit complet et [ASSUMPTIONS.md](ASSUMPTIONS.md)
-pour les hypothèses fonctionnelles tranchées faute de créneau disponible avec le tuteur.
+pour les hypothèses fonctionnelles tranchées de façon autonome sur les points laissés ouverts par le
+brief.
 
 ## Architecture retenue
 

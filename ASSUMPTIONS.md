@@ -1,10 +1,9 @@
 # ASSUMPTIONS.md — Les questions laissées ouvertes, et les réponses retenues
 
 Le document du challenge Artefact CI (le "brief") ne précise pas tout — c'est normal et volontaire,
-il laisse une marge d'interprétation. Le calendrier n'a pas laissé de moment disponible avec le
-tuteur pour poser ces questions avant qu'elles ne deviennent bloquantes. Les points ci-dessous ont
-donc été **tranchés seul**, en s'appuyant sur le texte du brief, le bon sens, et les fichiers
-d'exemple fournis.
+il laisse une marge d'interprétation. Plutôt que de mettre le développement en pause en attendant une
+clarification sur chaque point, les questions ci-dessous ont été **tranchées de façon autonome**, en
+s'appuyant sur le texte du brief, le bon sens, et les fichiers d'exemple fournis.
 
 Ce ne sont pas des choix faits au hasard : pour chacun, ce document explique **pourquoi** ce choix a
 été fait, et **ce qu'il faudrait changer** si ce choix s'avère être le mauvais — pour pouvoir en
@@ -196,13 +195,12 @@ voir la fiche ADR-037 dans [DECISIONS.md](DECISIONS.md) pour le raisonnement com
 
 ---
 
-## Pourquoi ces décisions n'ont pas été validées avec le tuteur
+## Pourquoi trancher plutôt qu'attendre une validation
 
-L'idée de départ était de poser ces questions au tuteur pendant le challenge, puis de figer les
-réponses. Le calendrier n'a pas laissé de moment réaliste pour cet échange, donc ces 9 points ont été
-tranchés seul plutôt que de bloquer l'avancement du projet — ce qui reste cohérent avec l'esprit du
-brief (savoir demander de l'aide est une compétence utile, mais savoir trancher et documenter sa
-décision quand l'aide n'est pas disponible à temps en est une autre).
+Un projet réel avance rarement avec toutes les réponses en main dès le départ. Savoir identifier un
+point ambigu, trancher avec une raison explicite, documenter l'impact si ce choix s'avère incorrect,
+et rester prêt à en discuter fait partie du travail — c'est l'approche retenue ici pour ces 9 points,
+plutôt que de mettre le projet en pause en attendant une validation externe.
 
 Chaque décision ci-dessus reste **réversible et expliquée** : si la lecture retenue s'avère fausse au
 moment de la présentation, l'impact exact est déjà écrit plus haut — prêt à être corrigé sans remettre

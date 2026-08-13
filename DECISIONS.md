@@ -294,8 +294,8 @@ la combinaison de valeurs a déjà été vue **dans le même fichier**.
   production, mais rejeté pour le MVP — nécessite une stratégie de fenêtre/performance sur
   l'historique qui dépasse le périmètre du MVP ; noté comme next-step dans `DESIGN.md`.
 
-**Conséquences** : documenté comme hypothèse dans `ASSUMPTIONS.md` (§4) — décision assumée faute de
-créneau disponible avec le tuteur, réversible si besoin (voir l'impact documenté à cet endroit).
+**Conséquences** : documenté comme hypothèse dans `ASSUMPTIONS.md` (§4) — décision tranchée de façon
+autonome, réversible si besoin (voir l'impact documenté à cet endroit).
 
 ---
 
