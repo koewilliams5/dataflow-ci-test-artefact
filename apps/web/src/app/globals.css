@@ -1337,6 +1337,40 @@ table tbody tr:hover, .table tbody tr:hover { background: var(--bg-hover); }
   .grid[style*="1.1fr"], .grid[style*="1.35fr"] { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
+/* Notifications in-app (voir NotificationBell.tsx) */
+.notification-badge {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 16px; height: 16px;
+  padding: 0 3px;
+  border-radius: var(--radius-full);
+  background: var(--status-failed-solid);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  display: grid; place-items: center;
+  line-height: 1;
+}
+.notification-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 320px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: var(--border-w) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-overlay);
+  padding: var(--space-2);
+}
+.notification-item {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+.notification-item:hover { background: var(--bg-hover); text-decoration: none; }
+.notification-item + .notification-item { margin-top: var(--space-1); }
+
 /* Icônes de bascule de thème (voir ThemeToggle.tsx) */
 .theme-icon-dark { display: none; }
 [data-theme="dark"] .theme-icon-light { display: none; }

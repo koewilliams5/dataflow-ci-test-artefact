@@ -5,6 +5,7 @@ import { auth } from "../../auth";
 import { logoutAction } from "../../lib/auth/actions";
 import { ThemeToggle } from "../ThemeToggle";
 import { NavLinks } from "./NavLinks";
+import { NotificationBell } from "./NotificationBell";
 
 // Deuxième vérification de session en plus du middleware (défense en
 // profondeur, voir DESIGN.md/section sécurité) : le middleware gère la
@@ -38,6 +39,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <NavLinks />
 
           <span className="spacer" />
+
+          <NotificationBell />
 
           <ThemeToggle />
 

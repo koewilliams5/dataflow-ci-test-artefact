@@ -251,9 +251,9 @@ schéma de données lui-même, pas par une règle applicative à faire respecter
 
 | ID  | Tâche                                                                 | Priorité | Statut      | Dépendances |
 | --- | --------------------------------------------------------------------- | -------- | ----------- | ----------- |
-| T51 | Notifications in-app à la fin d'un traitement                         | C        | Not started | T23         |
+| T51 | Notifications in-app à la fin d'un traitement                         | C        | Done        | T23         |
 | T52 | Webhooks sortants à la validation d'un fichier                        | C        | Not started | T23         |
-| T53 | Multi-tenant : isolation des sources par client                       | C        | Not started | T04         |
+| T53 | Multi-tenant : isolation des sources par client                       | C        | Écarté (voir ASSUMPTIONS.md) | T04 |
 | T54 | SSE/WebSocket en remplacement du polling de statut                    | C        | Not started | T25         |
 | T55 | Extension de la couverture de tests (edge cases, e2e supplémentaires) | C        | Not started | T40, T42    |
 

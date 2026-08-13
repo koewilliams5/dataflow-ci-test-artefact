@@ -178,6 +178,26 @@ export async function listRecentIngestions(limit = 20, client: PrismaClient = de
   });
 }
 
+const NOTIFICATION_LIMIT = 20;
+
+/**
+ * Ingestions passées à un statut terminal depuis `since` — sert de base aux
+ * notifications in-app (voir NotificationBell.tsx). Pas de notion de
+ * destinataire : l'app est mono-espace de travail, tous les opérateurs
+ * voient les mêmes ingestions (cohérent avec le dashboard).
+ */
+export async function listIngestionsCompletedSince(
+  since: Date,
+  client: PrismaClient = defaultClient,
+) {
+  return client.ingestion.findMany({
+    where: { processingCompletedAt: { gt: since } },
+    orderBy: { processingCompletedAt: "desc" },
+    take: NOTIFICATION_LIMIT,
+    include: { dataSource: { select: { name: true } } },
+  });
+}
+
 /**
  * Protection contre la double soumission : si un fichier au checksum
  * identique est déjà PENDING/PROCESSING pour cette source, on retourne cette
