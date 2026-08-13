@@ -28,5 +28,6 @@
   "allowExtraColumns": false,
   "trimStrings": true,
   "caseSensitiveHeaders": false,
-  "duplicateKeyColumns": ["date_inventaire", "agence_id", "type_carte"]
+  "duplicateKeyColumns": ["date_inventaire", "agence_id", "type_carte"],
+  "delimiter": ";"
 }

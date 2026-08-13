@@ -43,7 +43,7 @@ export async function validateFile(input: ValidateFileInput): Promise<ValidateFi
   try {
     source =
       fileFormat === "csv"
-        ? await readCsvRowSource(fileStream)
+        ? await readCsvRowSource(fileStream, schema.delimiter)
         : await readXlsxRowSource(fileStream);
   } catch (error) {
     return malformedResult(

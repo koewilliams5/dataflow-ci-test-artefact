@@ -112,6 +112,9 @@ const schemaDefinitionShape = z.object({
   trimStrings: z.boolean().default(true),
   caseSensitiveHeaders: z.boolean().default(false),
   duplicateKeyColumns: z.array(z.string()).optional(),
+  // Séparateur de colonnes CSV — voir DECISIONS.md ADR-041. Défaut "," pour rester
+  // rétrocompatible avec tout schéma existant qui ne déclare pas ce champ.
+  delimiter: z.string().length(1, "delimiter doit être un seul caractère.").default(","),
 });
 
 export const schemaDefinitionSchema = schemaDefinitionShape.superRefine((value, ctx) => {

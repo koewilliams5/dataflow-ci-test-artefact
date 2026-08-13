@@ -1185,3 +1185,38 @@ des tentatives BullMQ dans `handleJobFailure`). Livraison **best-effort** :
 **Conséquences** : pas de garantie de livraison — à assumer explicitement en soutenance comme
 limite connue d'un bonus de fin de MVP, pas une fonctionnalité entreprise. Si `WEBHOOK_SIGNING_SECRET`
 n'est jamais configuré, tous les webhooks partent non signés (comportement voulu, pas un bug).
+
+---
+
+## ADR-041 — Séparateur CSV configurable par source, valeur par défaut `,`
+
+**Statut** : Adopté
+
+**Contexte** : le dépôt de départ Artefact CI (inaccessible pendant l'essentiel du développement,
+voir ASSUMPTIONS.md) a pu être consulté le 2026-08-13. Son deuxième exemple de source ("Stock Cartes
+Bancaires - Banque Atlantique") utilise un fichier CSV séparé par des points-virgules (`;`), alors
+que le moteur de ce projet (`packages/validation`, via `csv-parse`) avait le séparateur virgule câblé
+en dur. Le fichier README du dépôt de départ précise explicitement : *"les deux sources ont des
+délimiteurs et formats de date différents. C'est volontaire, ça reflète la réalité du métier."* —
+gérer plusieurs délimiteurs différents, simultanément, est donc une exigence du brief lui-même, pas
+un cas limite à ignorer.
+
+**Décision** : nouveau champ optionnel `delimiter` (un seul caractère, `,` par défaut) dans le format
+de schéma (`packages/domain/schemaDefinitionSchema`), transmis par `validateFile` au lecteur CSV
+(`readCsvRowSource`, lui-même un simple passage au paramètre `delimiter` de `csv-parse`). Tout schéma
+existant qui ne déclare pas ce champ garde le comportement actuel (virgule) sans migration —
+rétrocompatible par construction grâce à `.default(",")` côté Zod.
+
+**Alternatives considérées**
+
+- _Détection automatique du délimiteur_ (compter virgules vs points-virgules sur la première ligne) :
+  rejeté — fragile (un champ texte contenant une virgule dans un fichier `;` peut fausser la
+  détection), et incohérent avec le principe du reste du format de schéma : tout y est déclaré
+  explicitement et vérifié par Zod, jamais deviné à l'exécution.
+- _Délimiteur fixe global pour toute l'application_ : rejeté d'office — les deux formats (`,` et `;`)
+  doivent coexister au même moment, pour des sources différentes.
+
+**Conséquences** : le format de schéma s'enrichit d'un champ de plus, mais reste rétrocompatible.
+N'ajoute pas de mécanisme de règle inter-colonnes (ex. "cette date doit être antérieure à une autre
+colonne") — le second exemple du brief en a aussi besoin, mais c'est un chantier distinct, non couvert
+ici (voir DESIGN.md §5/§7).

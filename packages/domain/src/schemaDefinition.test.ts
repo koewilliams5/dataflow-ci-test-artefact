@@ -36,6 +36,19 @@ describe("schemaDefinitionSchema — cas valides", () => {
       expect(result.data.allowExtraColumns).toBe(false);
       expect(result.data.trimStrings).toBe(true);
       expect(result.data.caseSensitiveHeaders).toBe(false);
+      expect(result.data.delimiter).toBe(",");
+    }
+  });
+
+  it("accepte un délimiteur personnalisé (ex. point-virgule)", () => {
+    const result = schemaDefinitionSchema.safeParse({
+      columns: [{ name: "id", type: "string" }],
+      delimiter: ";",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.delimiter).toBe(";");
     }
   });
 
@@ -71,6 +84,14 @@ describe("schemaDefinitionSchema — cas invalides", () => {
     if (!result.success) {
       expect(result.error.issues.some((issue) => issue.message.includes("double"))).toBe(true);
     }
+  });
+
+  it.each(["", ",;", "tab"])("rejette un délimiteur qui n'est pas un seul caractère (%s)", (delimiter) => {
+    const result = schemaDefinitionSchema.safeParse({
+      columns: [{ name: "id", type: "string" }],
+      delimiter,
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejette un type de colonne inconnu", () => {

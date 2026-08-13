@@ -210,7 +210,8 @@ chaque fois, avant que ce ne soit enregistré. Exemple concret, pour une source 
   "allowExtraColumns": false,
   "trimStrings": true,
   "caseSensitiveHeaders": false,
-  "duplicateKeyColumns": ["client_id", "date"]
+  "duplicateKeyColumns": ["client_id", "date"],
+  "delimiter": ","
 }
 ```
 
@@ -383,19 +384,17 @@ un vrai formulaire pour créer/modifier un schéma (aujourd'hui, on écrit du JS
 assistance IA facultative) ; la détection de doublons contre l'historique déjà envoyé (seulement à
 l'intérieur d'un même fichier pour l'instant) ; un cloisonnement par client (une seule liste de
 sources partagée par tous les utilisateurs) ; une suppression "douce" (récupérable) des éléments qui
-gardent un historique ; **un séparateur CSV configurable par source** (le moteur ne lit que des
-fichiers séparés par des virgules — un fichier séparé par des points-virgules, comme le second
-exemple du brief, `stock-banque-*.csv`, ne peut pas être envoyé tel quel aujourd'hui) ; **des règles
-qui comparent deux colonnes d'une même ligne entre elles** (ex. "cette date doit être antérieure à
-cette autre date") — le moteur ne vérifie aujourd'hui que colonne par colonne, jamais deux colonnes
-l'une contre l'autre, ce que le second exemple du brief demande aussi.
+gardent un historique ; **des règles qui comparent deux colonnes d'une même ligne entre elles** (ex.
+"cette date doit être antérieure à cette autre date") — le moteur ne vérifie aujourd'hui que colonne
+par colonne, jamais deux colonnes l'une contre l'autre, ce que le second exemple du brief demande.
 
-*Note sur les fichiers d'exemple* : `samples/` contient désormais les fichiers réels du dépôt de
-départ Artefact CI (récupérés le 2026-08-13 — indisponibles pendant l'essentiel du développement,
-voir ASSUMPTIONS.md pour l'historique). Le schéma "Ventes Orange CI" a été vérifié avec succès contre
-le vrai moteur de ce projet. Les deux fichiers "Stock Banque Atlantique" sont conservés tels quels
-pour référence, mais ne peuvent pas être envoyés via l'application aujourd'hui, pour les deux raisons
-ci-dessus (séparateur `;`, règle inter-colonnes) — une limite assumée, pas un oubli.
+*Note sur les fichiers d'exemple* : `samples/` contient les fichiers réels du dépôt de départ
+Artefact CI (récupérés le 2026-08-13 — indisponibles pendant l'essentiel du développement, voir
+ASSUMPTIONS.md pour l'historique). Les deux schémas ("Ventes Orange CI" et "Stock Banque Atlantique",
+avec son séparateur `;` et son format de date européen) ont été vérifiés avec succès contre le vrai
+moteur de ce projet — voir ADR-041 dans [DECISIONS.md](DECISIONS.md) pour le séparateur CSV
+configurable par source, ajouté spécifiquement pour ça. Seule la règle inter-colonnes du second
+exemple (mentionnée ci-dessus) reste hors périmètre.
 
 ---
 
@@ -442,9 +441,7 @@ ci-dessus (séparateur `;`, règle inter-colonnes) — une limite assumée, pas 
    explicite plutôt qu'un résultat de vérification générique.
 7. **Un vrai système de nouvelle tentative pour les webhooks** en cas d'échec de livraison — pour
    l'instant, un webhook manqué n'est pas rattrapé automatiquement.
-8. **Un séparateur CSV configurable par source** (aujourd'hui la virgule uniquement) — nécessaire
-   pour traiter le second exemple du brief tel quel (`stock-banque-*.csv`, séparé par `;`).
-9. **Des règles de vérification qui comparent deux colonnes entre elles** sur une même ligne (ex.
+8. **Des règles de vérification qui comparent deux colonnes entre elles** sur une même ligne (ex.
    une date antérieure à une autre) — le moteur ne vérifie aujourd'hui que colonne par colonne.
 
 ---

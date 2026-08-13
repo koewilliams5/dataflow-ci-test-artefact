@@ -9,13 +9,14 @@ import { MalformedFileError } from "../types";
  * `for await`. L'en-tête (premier enregistrement) est lu séparément pour
  * pouvoir le valider avant de commencer à parcourir les lignes de données.
  */
-export async function readCsvRowSource(input: Readable): Promise<FileRowSource> {
+export async function readCsvRowSource(input: Readable, delimiter = ","): Promise<FileRowSource> {
   const parser = input.pipe(
     parse({
       bom: true,
       skip_empty_lines: true,
       relax_column_count: true,
       trim: false, // le trim est une décision du schéma (trimStrings), pas du parseur
+      delimiter,
     }),
   );
 

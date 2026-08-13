@@ -11,6 +11,7 @@ const SCHEMA: SchemaDefinition = {
   allowExtraColumns: false,
   trimStrings: true,
   caseSensitiveHeaders: false,
+  delimiter: ",",
 };
 
 describe("validateHeader", () => {

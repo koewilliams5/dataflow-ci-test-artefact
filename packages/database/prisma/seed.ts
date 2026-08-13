@@ -69,6 +69,7 @@ const ventesOrangeSchema: SchemaDefinition = {
   trimStrings: true,
   caseSensitiveHeaders: false,
   duplicateKeyColumns: ["date_vente", "agence_code", "type_forfait"],
+  delimiter: ",",
 };
 
 function checksumOf(content: string): string {

@@ -42,6 +42,7 @@ const schema: SchemaDefinition = {
   trimStrings: true,
   caseSensitiveHeaders: false,
   duplicateKeyColumns: ["client_id", "date"],
+  delimiter: ",",
 };
 
 describe("validateFile", () => {
@@ -62,6 +63,29 @@ describe("validateFile", () => {
 
     const montantStat = result.columnStats.find((stat) => stat.columnName === "montant_fcfa");
     expect(montantStat).toMatchObject({ count: 3, mean: 15000, min: 5000, max: 25000 });
+  });
+
+  it("lit un CSV séparé par des points-virgules quand le schéma le déclare", async () => {
+    const result = await validateFile({
+      fileFormat: "csv",
+      fileStream: fixtureStream("semicolon-delimited.csv"),
+      schema: { ...schema, delimiter: ";" },
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.totalRows).toBe(3);
+    expect(result.validRows).toBe(3);
+  });
+
+  it("un CSV point-virgule lu avec le délimiteur par défaut (,) échoue à l'en-tête", async () => {
+    const result = await validateFile({
+      fileFormat: "csv",
+      fileStream: fixtureStream("semicolon-delimited.csv"),
+      schema,
+    });
+
+    expect(result.totalRows).toBe(0);
+    expect(result.errors.some((error) => error.errorCode === "MISSING_REQUIRED_COLUMN")).toBe(true);
   });
 
   it("isole les lignes invalides d'un fichier partiellement valide", async () => {

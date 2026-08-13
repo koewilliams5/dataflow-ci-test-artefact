@@ -21,15 +21,21 @@ CSV séparé par des virgules, dates `YYYY-MM-DD`. Fonctionne tel quel dans Data
 
 ## Stock Cartes Bancaires - Banque Atlantique CI (`source-stock-banque.json`)
 
-CSV séparé par des **points-virgules**, dates `DD/MM/YYYY`. **Ne peut pas être envoyé tel quel dans
-DataFlow CI aujourd'hui** — deux limites connues du moteur, assumées et documentées
-(voir [DESIGN.md](../DESIGN.md) §5 et §7) :
+CSV séparé par des **points-virgules**, dates `DD/MM/YYYY` — fonctionne tel quel dans DataFlow CI
+depuis l'ajout du séparateur configurable par source (`"delimiter": ";"` dans le schéma, voir
+ADR-041 dans [DECISIONS.md](../DECISIONS.md)) :
 
-1. Le moteur ne lit que des fichiers séparés par des virgules ; le séparateur n'est pas configurable
-   par source.
-2. Le vrai schéma de cette source contient une règle qui compare deux colonnes entre elles
-   (`dernier_reapprovisionnement` doit être ≤ `date_inventaire`) — le moteur ne vérifie aujourd'hui
-   que colonne par colonne, jamais deux colonnes l'une contre l'autre.
+- `stock-banque-clean.csv` — 80 lignes, toutes valides.
+- `stock-banque-dirty.csv` — 42 lignes, 33 valides / 9 en erreur (date mal formée, agence hors
+  format, type de carte hors liste, stock négatif/hors bornes, email hors domaine, ville trop
+  courte, ligne dupliquée, champ obligatoire manquant). Chiffres vérifiés en faisant tourner le vrai
+  moteur (`packages/validation`) contre ce fichier et `source-stock-banque.json`.
 
-Conservés tels quels pour référence, comme demandé par le brief d'origine ("les échantillons
+**Limite restante** : le vrai schéma de cette source contient une règle qui compare deux colonnes
+entre elles (`dernier_reapprovisionnement` doit être ≤ `date_inventaire`) — le moteur ne vérifie
+aujourd'hui que colonne par colonne, jamais deux colonnes l'une contre l'autre. Cette règle précise
+n'est donc pas appliquée (voir [DESIGN.md](../DESIGN.md) §5 et §7). Le reste du schéma (types,
+formats, motifs, listes de valeurs, doublons) est entièrement vérifié.
+
+Ces fichiers sont conservés tels quels, comme demandé par le brief d'origine ("les échantillons
 originaux doivent rester intacts pour la démonstration").
