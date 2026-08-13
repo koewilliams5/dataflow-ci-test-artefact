@@ -4,6 +4,7 @@ import { generateObjectKey } from "@dataflow-ci/storage";
 import { validateFile } from "@dataflow-ci/validation";
 import { deriveIngestionOutcome } from "./deriveIngestionOutcome";
 import { detectFileFormat } from "./detectFileFormat";
+import { notifyIngestionWebhook } from "./dispatchWebhook";
 import { logger, timeStep } from "./logger";
 import { readableToBuffer } from "./readableToBuffer";
 import { getStorageProvider } from "./storage";
@@ -106,7 +107,7 @@ export async function processIngestionJob({
 
   const outcome = deriveIngestionOutcome(validationResult);
 
-  await timeStep(log, "persist_result", async () => {
+  const completed = await timeStep(log, "persist_result", async () => {
     let validFileKey: string | undefined;
     if (validationResult.validRows > 0) {
       const exportBuffer = await readableToBuffer(validationResult.validRowsCsv);
@@ -136,7 +137,7 @@ export async function processIngestionJob({
       validationResult.columnStats,
     );
 
-    await ingestionRepository.completeIngestion(ingestionId, {
+    return ingestionRepository.completeIngestion(ingestionId, {
       status: outcome.status,
       totalRows: validationResult.totalRows,
       validRows: validationResult.validRows,
@@ -145,6 +146,8 @@ export async function processIngestionJob({
       ...(outcome.failureReason !== undefined ? { failureReason: outcome.failureReason } : {}),
     });
   });
+
+  await notifyIngestionWebhook(completed, log);
 
   log.info({ step: "complete", result: outcome.status }, "Traitement terminé.");
 }

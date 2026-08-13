@@ -8,11 +8,19 @@ vi.mock("@dataflow-ci/database", () => ({
   },
 }));
 
+const notifyIngestionWebhook = vi.fn();
+vi.mock("./dispatchWebhook", () => ({
+  notifyIngestionWebhook: (...args: unknown[]) => notifyIngestionWebhook(...args),
+}));
+
 const { handleJobFailure } = await import("./handleJobFailure");
+
+const COMPLETED_INGESTION = { id: "ingestion-1", dataSourceId: "source-1", status: "FAILED" };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  completeIngestion.mockResolvedValue(undefined);
+  completeIngestion.mockResolvedValue(COMPLETED_INGESTION);
+  notifyIngestionWebhook.mockResolvedValue(undefined);
 });
 
 describe("handleJobFailure", () => {
@@ -23,6 +31,7 @@ describe("handleJobFailure", () => {
     );
 
     expect(completeIngestion).not.toHaveBeenCalled();
+    expect(notifyIngestionWebhook).not.toHaveBeenCalled();
   });
 
   it("marque l'ingestion FAILED une fois la dernière tentative épuisée", async () => {
@@ -38,6 +47,7 @@ describe("handleJobFailure", () => {
       invalidRows: 0,
       failureReason: "Storage unavailable",
     });
+    expect(notifyIngestionWebhook).toHaveBeenCalledWith(COMPLETED_INGESTION, expect.anything());
   });
 
   it("ne lève pas si l'écriture finale en base échoue elle-même", async () => {
@@ -49,5 +59,6 @@ describe("handleJobFailure", () => {
         new Error("Storage unavailable"),
       ),
     ).resolves.toBeUndefined();
+    expect(notifyIngestionWebhook).not.toHaveBeenCalled();
   });
 });

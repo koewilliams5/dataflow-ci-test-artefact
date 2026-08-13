@@ -39,6 +39,11 @@ vi.mock("@dataflow-ci/validation", () => ({
   validateFile: (...args: unknown[]) => validateFile(...args),
 }));
 
+const notifyIngestionWebhook = vi.fn();
+vi.mock("./dispatchWebhook", () => ({
+  notifyIngestionWebhook: (...args: unknown[]) => notifyIngestionWebhook(...args),
+}));
+
 const { processIngestionJob } = await import("./processIngestionJob");
 
 const BASE_INGESTION = {
@@ -65,7 +70,8 @@ beforeEach(() => {
   upload.mockResolvedValue(undefined);
   appendIngestionErrors.mockResolvedValue(0);
   replaceIngestionColumnStats.mockResolvedValue(undefined);
-  completeIngestion.mockResolvedValue(undefined);
+  completeIngestion.mockResolvedValue({ id: "ingestion-1", dataSourceId: "source-1" });
+  notifyIngestionWebhook.mockResolvedValue(undefined);
   findSchemaVersionById.mockResolvedValue({ id: "schema-version-1", definition: {} });
   getTypedDefinition.mockReturnValue({
     columns: [],
@@ -140,6 +146,10 @@ describe("processIngestionJob", () => {
         validFileKey: expect.any(String),
       }),
     );
+    expect(notifyIngestionWebhook).toHaveBeenCalledWith(
+      { id: "ingestion-1", dataSourceId: "source-1" },
+      expect.anything(),
+    );
   });
 
   it("reprend une ingestion déjà PROCESSING (retry) sans re-tenter le verrouillage", async () => {
@@ -205,6 +215,7 @@ describe("processIngestionJob", () => {
     );
     const completeArgs = completeIngestion.mock.calls[0]?.[1];
     expect(completeArgs).not.toHaveProperty("validFileKey");
+    expect(notifyIngestionWebhook).toHaveBeenCalledTimes(1);
   });
 
   it("écrit PARTIAL quand le fichier mélange lignes valides et invalides", async () => {

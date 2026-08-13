@@ -11,6 +11,14 @@ export const createDataSourceInputSchema = z.object({
     .trim()
     .max(2000, "La description ne peut pas dépasser 2000 caractères.")
     .optional(),
+  // Voir DECISIONS.md ADR-040 : appelée par le worker à la fin du traitement
+  // d'un fichier de cette source (best-effort, jamais bloquant).
+  webhookUrl: z
+    .string()
+    .trim()
+    .url("L'URL du webhook est invalide.")
+    .max(2000, "L'URL du webhook ne peut pas dépasser 2000 caractères.")
+    .optional(),
 });
 
 export type CreateDataSourceInput = z.infer<typeof createDataSourceInputSchema>;
@@ -28,9 +36,16 @@ export const updateDataSourceInputSchema = z
       .trim()
       .max(2000, "La description ne peut pas dépasser 2000 caractères.")
       .optional(),
+    webhookUrl: z
+      .string()
+      .trim()
+      .url("L'URL du webhook est invalide.")
+      .max(2000, "L'URL du webhook ne peut pas dépasser 2000 caractères.")
+      .optional(),
   })
-  .refine((data) => data.name !== undefined || data.description !== undefined, {
-    message: "Au moins un champ (name ou description) doit être fourni.",
-  });
+  .refine(
+    (data) => data.name !== undefined || data.description !== undefined || data.webhookUrl !== undefined,
+    { message: "Au moins un champ (name, description ou webhookUrl) doit être fourni." },
+  );
 
 export type UpdateDataSourceInput = z.infer<typeof updateDataSourceInputSchema>;

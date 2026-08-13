@@ -50,6 +50,7 @@ export default async function SourceDetailPage({ params }: SourceDetailPageProps
             sourceId={source.id}
             initialName={source.name}
             initialDescription={source.description ?? ""}
+            initialWebhookUrl={source.webhookUrl ?? ""}
           />
           <SchemaEditor sourceId={source.id} nextVersionNumber={nextVersionNumber} />
         </div>

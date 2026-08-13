@@ -35,6 +35,9 @@ model DataSource {
   id                     String   @id @default(uuid()) @db.Uuid
   name                   String
   description            String?
+  // Appelée par le worker à la fin du traitement d'un fichier de cette source
+  // (voir DECISIONS.md ADR-040) — best-effort, ne bloque jamais le traitement.
+  webhookUrl             String?
   currentSchemaVersionId String?  @unique @db.Uuid
   createdById            String   @db.Uuid
   createdAt              DateTime @default(now())

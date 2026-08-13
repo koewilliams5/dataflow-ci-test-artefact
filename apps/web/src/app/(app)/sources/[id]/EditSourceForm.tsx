@@ -8,12 +8,19 @@ interface EditSourceFormProps {
   sourceId: string;
   initialName: string;
   initialDescription: string;
+  initialWebhookUrl: string;
 }
 
-export function EditSourceForm({ sourceId, initialName, initialDescription }: EditSourceFormProps) {
+export function EditSourceForm({
+  sourceId,
+  initialName,
+  initialDescription,
+  initialWebhookUrl,
+}: EditSourceFormProps) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
+  const [webhookUrl, setWebhookUrl] = useState(initialWebhookUrl);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +31,7 @@ export function EditSourceForm({ sourceId, initialName, initialDescription }: Ed
     const parsed = updateDataSourceInputSchema.safeParse({
       name,
       description: description || undefined,
+      webhookUrl: webhookUrl || undefined,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
@@ -83,6 +91,19 @@ export function EditSourceForm({ sourceId, initialName, initialDescription }: Ed
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={2}
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="edit-webhook-url">
+            Webhook <span className="label-hint">(optionnel)</span>
+          </label>
+          <input
+            className="input"
+            id="edit-webhook-url"
+            type="url"
+            value={webhookUrl}
+            onChange={(event) => setWebhookUrl(event.target.value)}
+            placeholder="https://exemple.com/webhooks/dataflow-ci"
           />
         </div>
         {error ? (

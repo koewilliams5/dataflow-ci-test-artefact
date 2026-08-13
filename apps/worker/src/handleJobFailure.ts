@@ -1,4 +1,5 @@
 import { ingestionRepository } from "@dataflow-ci/database";
+import { notifyIngestionWebhook } from "./dispatchWebhook";
 import { logger } from "./logger";
 
 export interface FailedJobInfo {
@@ -34,7 +35,7 @@ export async function handleJobFailure(job: FailedJobInfo, error: Error): Promis
   }
 
   try {
-    await ingestionRepository.completeIngestion(job.ingestionId, {
+    const completed = await ingestionRepository.completeIngestion(job.ingestionId, {
       status: "FAILED",
       totalRows: 0,
       validRows: 0,
@@ -45,6 +46,7 @@ export async function handleJobFailure(job: FailedJobInfo, error: Error): Promis
       { step: "job_failed", result: "final_failure" },
       "Toutes les tentatives épuisées — ingestion marquée FAILED.",
     );
+    await notifyIngestionWebhook(completed, log);
   } catch (persistError) {
     log.error(
       {

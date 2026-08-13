@@ -41,6 +41,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   const updated = await dataSourceRepository.updateDataSource(id, {
     ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
     ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
+    ...(parsed.data.webhookUrl !== undefined ? { webhookUrl: parsed.data.webhookUrl } : {}),
   });
   return NextResponse.json(updated);
 }

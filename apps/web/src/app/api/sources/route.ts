@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     name: parsed.data.name,
     createdById: session.user.id,
     ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
+    ...(parsed.data.webhookUrl !== undefined ? { webhookUrl: parsed.data.webhookUrl } : {}),
   });
 
   return NextResponse.json(source, { status: 201 });

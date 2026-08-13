@@ -96,4 +96,39 @@ describe("PATCH /api/sources/[id]", () => {
     expect(response.status).toBe(200);
     expect(updateDataSource).toHaveBeenCalledWith("source-1", { name: "New name" });
   });
+
+  it("400 si le webhookUrl fourni n'est pas une URL valide", async () => {
+    requireSession.mockResolvedValue(AUTHENTICATED);
+    findDataSourceById.mockResolvedValue({ id: "source-1", name: "Ventes Orange CI" });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/sources/source-1", {
+        method: "PATCH",
+        body: JSON.stringify({ webhookUrl: "pas-une-url" }),
+      }),
+      { params: Promise.resolve({ id: "source-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(updateDataSource).not.toHaveBeenCalled();
+  });
+
+  it("200 et transmet le webhookUrl fourni", async () => {
+    requireSession.mockResolvedValue(AUTHENTICATED);
+    findDataSourceById.mockResolvedValue({ id: "source-1", name: "Ventes Orange CI" });
+    updateDataSource.mockResolvedValue({ id: "source-1", webhookUrl: "https://example.com/hook" });
+
+    const response = await PATCH(
+      new Request("http://localhost/api/sources/source-1", {
+        method: "PATCH",
+        body: JSON.stringify({ webhookUrl: "https://example.com/hook" }),
+      }),
+      { params: Promise.resolve({ id: "source-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateDataSource).toHaveBeenCalledWith("source-1", {
+      webhookUrl: "https://example.com/hook",
+    });
+  });
 });

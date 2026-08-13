@@ -75,6 +75,39 @@ describe("POST /api/sources", () => {
       createdById: "user-1",
     });
   });
+
+  it("400 si le webhookUrl fourni n'est pas une URL valide", async () => {
+    requireSession.mockResolvedValue(AUTHENTICATED);
+
+    const response = await POST(
+      new Request("http://localhost/api/sources", {
+        method: "POST",
+        body: JSON.stringify({ name: "Ventes Orange CI", webhookUrl: "pas-une-url" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createDataSource).not.toHaveBeenCalled();
+  });
+
+  it("201 et transmet le webhookUrl fourni", async () => {
+    requireSession.mockResolvedValue(AUTHENTICATED);
+    createDataSource.mockResolvedValue({ id: "source-1", name: "Ventes Orange CI" });
+
+    const response = await POST(
+      new Request("http://localhost/api/sources", {
+        method: "POST",
+        body: JSON.stringify({ name: "Ventes Orange CI", webhookUrl: "https://example.com/hook" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createDataSource).toHaveBeenCalledWith({
+      name: "Ventes Orange CI",
+      createdById: "user-1",
+      webhookUrl: "https://example.com/hook",
+    });
+  });
 });
 
 describe("GET /api/sources", () => {

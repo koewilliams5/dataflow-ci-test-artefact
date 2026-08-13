@@ -8,6 +8,7 @@ export function CreateSourceForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -17,6 +18,7 @@ export function CreateSourceForm() {
     const parsed = createDataSourceInputSchema.safeParse({
       name,
       description: description || undefined,
+      webhookUrl: webhookUrl || undefined,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
@@ -44,6 +46,7 @@ export function CreateSourceForm() {
 
     setName("");
     setDescription("");
+    setWebhookUrl("");
     router.refresh();
   }
 
@@ -79,6 +82,19 @@ export function CreateSourceForm() {
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Origine, fréquence, format attendu..."
+          />
+        </div>
+        <div className="field">
+          <label className="label" htmlFor="source-webhook-url">
+            Webhook <span className="label-hint">(optionnel)</span>
+          </label>
+          <input
+            className="input"
+            id="source-webhook-url"
+            type="url"
+            value={webhookUrl}
+            onChange={(event) => setWebhookUrl(event.target.value)}
+            placeholder="https://exemple.com/webhooks/dataflow-ci"
           />
         </div>
         <button type="submit" className="btn btn-primary" disabled={isSubmitting}>

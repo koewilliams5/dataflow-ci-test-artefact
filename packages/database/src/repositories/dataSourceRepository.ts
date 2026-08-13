@@ -4,6 +4,7 @@ import { prisma as defaultClient } from "../client";
 export interface CreateDataSourceInput {
   name: string;
   description?: string;
+  webhookUrl?: string;
   createdById: string;
 }
 
@@ -28,6 +29,7 @@ export async function listDataSources(client: PrismaClient = defaultClient): Pro
 export interface UpdateDataSourceInput {
   name?: string;
   description?: string;
+  webhookUrl?: string;
 }
 
 /** Modifie uniquement le nom et/ou la description — jamais currentSchemaVersionId. */

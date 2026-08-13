@@ -1142,3 +1142,46 @@ qualité de données — à documenter explicitement en soutenance ("pourquoi ce
 des données réelles au LLM alors que l'autre ne le fait jamais"). L'opérateur reste seul décisionnaire
 de ce qu'il upload pour cet usage ; aucune automatisation ne peut déclencher cette fonctionnalité sur
 un fichier de production.
+
+---
+
+## ADR-040 — Webhooks sortants : best-effort, une tentative, jamais bloquant
+
+**Statut** : Proposé
+
+**Contexte** : le brief liste en bonus des webhooks sortants notifiant un système externe à la
+validation d'un fichier (T52). L'app reste mono-tenant (voir ASSUMPTIONS.md §1) mais chaque
+`DataSource` représente déjà un client/flux distinct — un point de configuration par source est
+donc le bon niveau de granularité, plutôt qu'un réglage global. La question structurante est la
+garantie de livraison : un vrai système de webhooks fiable (retries avec backoff, file d'attente
+dédiée, statut de livraison consultable) est un projet en soi, disproportionné pour un bonus de fin
+de MVP.
+
+**Décision** : `DataSource.webhookUrl` (optionnel). Le worker appelle le webhook juste après avoir
+écrit le statut terminal d'une ingestion (`SUCCESS`/`PARTIAL`/`FAILED`, y compris après épuisement
+des tentatives BullMQ dans `handleJobFailure`). Livraison **best-effort** :
+- une seule tentative, timeout 5s, aucun retry ;
+- un échec (timeout, réseau, réponse HTTP non-2xx) est loggé (`log.warn`) et **ignoré** — ne fait
+  jamais échouer ni retenter le job ; même philosophie qu'ADR-034 pour la couche IA (additif, jamais
+  bloquant) ;
+- signature HMAC-SHA256 du corps JSON dans l'en-tête `X-DataFlow-Signature`, via un secret partagé
+  optionnel (`WEBHOOK_SIGNING_SECRET`) — permet au destinataire de vérifier l'authenticité. Absent :
+  le webhook part quand même, simplement non signé (dégradation propre, comme les variables Ollama).
+
+**Alternatives considérées**
+
+- _File d'attente dédiée avec retries (BullMQ)_ : rejeté pour ce bonus — ajoute une deuxième queue,
+  une politique de retry/dead-letter et un écran de suivi des livraisons, hors de proportion avec le
+  temps disponible et la valeur démontrée à l'oral. Noté comme évolution naturelle post-MVP.
+  Actuellement une livraison manquée nécessite une re-consultation manuelle du rapport d'ingestion —
+  déjà accessible dans l'app.
+- _Webhook global (une seule URL pour toute l'app)_ : rejeté — chaque source représente un flux/client
+  distinct, un seul point de configuration par source colle mieux au modèle de données existant sans
+  introduire de notion de tenant.
+- _Pas de signature_ : envisagé pour rester minimal, mais l'ajout (une ligne HMAC) est trivial et
+  distingue clairement ce webhook d'un simple `fetch` non authentifiable — retenu comme option
+  optionnelle plutôt qu'obligatoire pour ne pas bloquer un premier test sans configuration.
+
+**Conséquences** : pas de garantie de livraison — à assumer explicitement en soutenance comme
+limite connue d'un bonus de fin de MVP, pas une fonctionnalité entreprise. Si `WEBHOOK_SIGNING_SECRET`
+n'est jamais configuré, tous les webhooks partent non signés (comportement voulu, pas un bug).

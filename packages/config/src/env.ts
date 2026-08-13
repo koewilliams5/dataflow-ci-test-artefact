@@ -23,6 +23,9 @@ const envSchema = z.object({
   OLLAMA_API_KEY: z.string().min(1).optional(),
   OLLAMA_BASE_URL: z.string().url().optional(),
   OLLAMA_MODEL: z.string().min(1).optional(),
+  // Signe les webhooks sortants (voir DECISIONS.md ADR-040) — optionnel : en son
+  // absence, les webhooks partent quand même, simplement non signés.
+  WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
