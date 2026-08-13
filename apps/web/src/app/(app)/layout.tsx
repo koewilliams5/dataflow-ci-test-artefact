@@ -43,7 +43,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
           <span className="user-chip">
             <span className="avatar">{initials}</span>
-            <span className="truncate" title={email}>
+            <span className="truncate user-chip-email" title={email}>
               {email}
             </span>
           </span>
@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 <path d="m16 17 5-5-5-5" />
                 <path d="M21 12H9" />
               </svg>
-              Déconnexion
+              <span className="btn-label">Déconnexion</span>
             </button>
           </form>
         </div>

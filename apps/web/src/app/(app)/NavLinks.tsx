@@ -58,7 +58,7 @@ export function NavLinks() {
             aria-current={isActive ? "page" : undefined}
           >
             {link.icon}
-            {link.label}
+            <span className="nav-link-label">{link.label}</span>
           </Link>
         );
       })}
