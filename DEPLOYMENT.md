@@ -61,28 +61,28 @@ d'environnement du service), jamais via un fichier `.env` copié dans l'image (v
 
 ## 4. Migrations de base de données
 
-Avant le premier déploiement (et à chaque déploiement qui inclut une migration Prisma) :
+**Automatisé depuis le 2026-08-13** (voir T46 dans TASKS.md) : la commande de démarrage des images
+`web` et `worker` (`CMD` du Dockerfile) lance `prisma migrate deploy` avant de démarrer le vrai
+serveur — plus besoin d'étape manuelle à chaque déploiement. `migrate deploy` (pas `migrate dev`) :
+applique les migrations déjà générées sans en créer de nouvelles ni demander de confirmation
+interactive, et ne fait rien si la base est déjà à jour (idempotent — la relancer à chaque démarrage
+de conteneur ne fait jamais de mal). Vérifié en local par un build + run complet des deux images
+avant la mise en ligne (voir §7 pour la commande de build).
 
-```bash
-pnpm --filter @dataflow-ci/database exec prisma migrate deploy
-```
+`web` et `worker` peuvent démarrer en même temps et lancer chacun cette commande : Prisma gère ce cas
+via un verrou Postgres — celui qui arrive en second attend brièvement puis constate qu'il n'y a rien
+à appliquer, sans erreur.
 
-`migrate deploy` (pas `migrate dev`) : applique les migrations déjà générées sans en créer de
-nouvelles ni demander de confirmation interactive — c'est la commande adaptée à un pipeline CI/CD.
-À exécuter une fois par déploiement, avant de basculer le trafic vers la nouvelle version (ou comme
-étape dédiée du pipeline de déploiement, avant le démarrage des nouveaux conteneurs).
-
-**Piège Railway Console, trouvé le 2026-08-13** : le shell interactif ("Console") d'un service
-Railway se connecte au conteneur du déploiement **actif au moment de l'ouverture** — si un nouveau
-déploiement est encore en cours de build (badge "Building" sur la carte du service), la Console
-reste attachée à l'ancien conteneur, avec l'ancien jeu de fichiers de migration. Lancer `migrate
-deploy` dans cet état affiche "No pending migrations to apply" de façon totalement silencieuse et
-non-erronée, alors que la migration du nouveau déploiement n'a en réalité jamais été appliquée —
-symptôme observé : la base de production plante en `P2022` ("column does not exist") dès que le
-nouveau conteneur bascule en trafic live. Toujours vérifier que le déploiement visé est bien
-"Online"/actif (pas "Building") avant de lancer une migration via Console, et si un doute subsiste,
-relancer la commande une fois le déploiement effectivement en ligne — `migrate deploy` est idempotent,
-la relancer ne fait jamais de mal.
+**Historique — piège Railway Console rencontré le 2026-08-13** (obsolète depuis l'automatisation
+ci-dessus, gardé à titre d'exemple) : le shell interactif ("Console") d'un service Railway se
+connecte au conteneur du déploiement **actif au moment de l'ouverture** — si un nouveau déploiement
+est encore en cours de build (badge "Building"), la Console reste attachée à l'ancien conteneur, avec
+l'ancien jeu de fichiers de migration. Lancer `migrate deploy` à la main dans cet état affichait "No
+pending migrations to apply" de façon trompeuse, alors que la migration du nouveau déploiement
+n'avait pas été appliquée — symptôme observé : la base plantait en `P2022` ("column does not exist")
+dès que le nouveau conteneur passait en trafic live. C'est exactement ce genre de piège qui a motivé
+l'automatisation : la migration se lance désormais dans le bon conteneur, au bon moment, à chaque
+fois, sans intervention manuelle.
 
 Le seed (`pnpm db:seed`) ne doit être exécuté qu'une fois, à la création de l'environnement — pas à
 chaque déploiement (il recréerait le compte de démonstration inutilement ; `upsert` le rend
@@ -109,10 +109,8 @@ variables partagées Railway (`${{Postgres.DATABASE_URL}}`, `${{Redis.REDIS_URL}
 recopier en dur — elles se mettent à jour automatiquement si le plugin change. Les `S3_*`,
 `AUTH_SECRET`, `AUTH_URL` restent à saisir manuellement (voir §3).
 
-**Migrations** : Railway n'exécute pas de commande "pré-déploiement" nativement pour un service
-Docker custom — le plus simple est d'ajouter `pnpm --filter @dataflow-ci/database exec prisma
-migrate deploy` comme premier hook du process au démarrage du service `web` (ou un job Railway "one-off"
-lancé manuellement une fois par déploiement contenant un changement de schéma), pas à chaque redémarrage.
+**Migrations** : automatisées directement dans la commande de démarrage des images `web` et `worker`
+(voir §4) — Railway n'a rien de spécifique à configurer pour ça.
 
 **Domaine** : Railway fournit un sous-domaine `*.up.railway.app` gratuit pour `web` dès l'activation
 d'un "Public Networking" sur ce service — c'est l'URL à mettre dans `AUTH_URL` et à documenter dans
@@ -129,11 +127,12 @@ le README une fois le déploiement fait.
 
 1. Provisionner Postgres/Redis/stockage S3-compatible managés, récupérer leurs URLs/identifiants.
 2. Renseigner les secrets sur la plateforme d'hébergement (jamais dans un fichier commité).
-3. `prisma migrate deploy` contre la base de production (voir §4).
-4. Déployer `apps/worker` (peut démarrer avant `web` sans risque — il ne fait qu'attendre des jobs).
-5. Déployer `apps/web`.
-6. Exécuter le seed une seule fois (`pnpm db:seed`) pour disposer du compte de démonstration.
-7. Vérifier `GET /health` du worker (200) et charger `/login` sur `web`.
+3. Déployer `apps/worker` (peut démarrer avant `web` sans risque — il ne fait qu'attendre des jobs).
+   La migration se lance automatiquement au démarrage du conteneur (voir §4) — pas d'étape séparée
+   à faire à la main, y compris pour le tout premier déploiement.
+4. Déployer `apps/web`.
+5. Exécuter le seed une seule fois (`pnpm db:seed`) pour disposer du compte de démonstration.
+6. Vérifier `GET /health` du worker (200) et charger `/login` sur `web`.
 8. Compléter la section "Application déployée" du README avec l'URL réelle.
 
 ## 8. CI

@@ -225,7 +225,7 @@ schéma de données lui-même, pas par une règle applicative à faire respecter
 | T43 | GitHub Actions : lint + typecheck + test sur chaque PR   | S        | **Done** — déclencheur corrigé pour `master` (branche réelle du dépôt, était réglé sur `main` par erreur) | T40         |
 | T44 | Dockerfiles `web` et `worker`                            | M        | **Done** — construits et vérifiés en local avant chaque déploiement réel                                                    | T05, T06    |
 | T45 | Déploiement `web` + `worker` + Postgres/Redis/S3 managés | M        | **Done** — https://web-production-a26b9.up.railway.app (Railway + Cloudflare R2)                                           | T44         |
-| T46 | Migrations exécutées automatiquement au déploiement      | M        | **Fait manuellement** au premier déploiement (`prisma migrate deploy` via la console Railway) — pas encore automatisé dans le pipeline | T45         |
+| T46 | Migrations exécutées automatiquement au déploiement      | M        | **Done** — `prisma migrate deploy` lancé au démarrage des conteneurs `web`/`worker` (Dockerfile `CMD`), idempotent, vérifié par build+run local des deux images | T45         |
 | T47 | Pipeline de déploiement continu (CD) sur push `main`     | C        | **Done** — Railway "Wait for CI" activé sur `web`/`worker` : déploiement automatique seulement si `.github/workflows/ci.yml` passe | T43, T45    |
 
 **Critères d'acceptation**
@@ -233,7 +233,7 @@ schéma de données lui-même, pas par une règle applicative à faire respecter
 - T43 : ✅ `.github/workflows/ci.yml` — sur chaque push/PR vers `master` : install, `typecheck`, `lint`, `test`, `build` sur tout le monorepo. Ne nécessite aucune infrastructure réelle (tous les tests sont mockés). Vérifié en conditions réelles (runs GitHub Actions passants) après correction du déclencheur (`main` → `master`, voir DECISIONS.md/RESTITUTION.md §4).
 - T44 : ✅ `apps/web/Dockerfile` et `apps/worker/Dockerfile` — build multi-étapes `turbo prune` (voir ADR-031 pour le choix de ne pas utiliser `output: "standalone"`). `.dockerignore` à la racine. Construits et vérifiés en conditions réelles à chaque déploiement Railway.
 - T45 : ✅ déployé sur Railway (`web` + `worker` + Postgres + Redis managés) + Cloudflare R2 pour le stockage — voir DEPLOYMENT.md.
-- T46 : ⏳ la commande (`prisma migrate deploy`) et sa place dans l'ordre de déploiement sont documentées (DEPLOYMENT.md §4, §7) et exécutées manuellement à chaque déploiement contenant une migration (via la console Railway) — pas encore automatisées dans le pipeline lui-même. Un piège lié à ce caractère manuel a été rencontré et documenté le 2026-08-13 (DEPLOYMENT.md §4).
+- T46 : ✅ `prisma migrate deploy` intégré au `CMD` de `apps/web/Dockerfile` et `apps/worker/Dockerfile` (avant le vrai démarrage du serveur/worker) — idempotent, sûr en cas de démarrage concurrent des deux services. Vérifié par un build + run complet des deux images en local contre la base de données locale, le 2026-08-13. Documenté dans DEPLOYMENT.md §4, avec le piège Railway Console (migrations manuelles) qui a motivé cette automatisation.
 
 ---
 

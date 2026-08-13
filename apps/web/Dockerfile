@@ -9,9 +9,8 @@
 # plutôt que de s'appuyer sur le traçage de dépendances de Next.js, pour rester
 # cohérente avec un `next build` qui doit aussi fonctionner tel quel en local.
 #
-# Jamais construite ni exécutée sur cette machine (Docker Desktop/WSL2
-# indisponible pendant tout le développement, voir TASKS.md T02) — écrite et
-# prête, à vérifier dès que Docker est disponible :
+# Construite et vérifiée en local, puis déployée en production sur Railway
+# (voir DEPLOYMENT.md) :
 #   docker build -f apps/web/Dockerfile -t dataflow-ci-web .
 
 FROM node:20-alpine AS base
@@ -55,4 +54,8 @@ USER nextjs
 WORKDIR /app/apps/web
 EXPOSE 3000
 ENV PORT=3000
-CMD ["pnpm", "start"]
+# `prisma migrate deploy` avant chaque démarrage : idempotent (ne fait rien si
+# la base est déjà à jour), sûr en cas de démarrage concurrent avec `worker`
+# (verrou Postgres géré par Prisma) — remplace l'étape manuelle documentée
+# jusqu'ici dans DEPLOYMENT.md §4 (voir T46 dans TASKS.md).
+CMD ["sh", "-c", "pnpm --filter @dataflow-ci/database exec prisma migrate deploy && pnpm start"]

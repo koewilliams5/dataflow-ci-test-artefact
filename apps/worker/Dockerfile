@@ -7,9 +7,8 @@
 # cohérent avec ADR-012 — packages partagés consommés en source TS) : le
 # runtime installe tsx comme dépendance de dev réelle, pas de build JS distinct.
 #
-# Jamais construite ni exécutée sur cette machine (Docker Desktop/WSL2
-# indisponible pendant tout le développement, voir TASKS.md T02) — écrite et
-# prête, à vérifier dès que Docker est disponible :
+# Construite et vérifiée en local, puis déployée en production sur Railway
+# (voir DEPLOYMENT.md) :
 #   docker build -f apps/worker/Dockerfile -t dataflow-ci-worker .
 
 FROM node:20-alpine AS base
@@ -46,4 +45,8 @@ WORKDIR /app/apps/worker
 EXPOSE 3001
 HEALTHCHECK --interval=15s --timeout=5s --retries=5 \
   CMD wget -qO- http://localhost:3001/health || exit 1
-CMD ["pnpm", "run", "start:docker"]
+# `prisma migrate deploy` avant chaque démarrage : idempotent (ne fait rien si
+# la base est déjà à jour), sûr en cas de démarrage concurrent avec `web`
+# (verrou Postgres géré par Prisma) — remplace l'étape manuelle documentée
+# jusqu'ici dans DEPLOYMENT.md §4 (voir T46 dans TASKS.md).
+CMD ["sh", "-c", "pnpm --filter @dataflow-ci/database exec prisma migrate deploy && pnpm run start:docker"]
