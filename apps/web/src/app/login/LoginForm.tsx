@@ -95,7 +95,7 @@ export function LoginForm() {
               strokeLinejoin="round"
               aria-hidden="true"
             >
-              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
