@@ -1,17 +1,50 @@
 {
   "columns": [
-    { "name": "date", "type": "date", "required": true, "dateFormat": "YYYY-MM-DD" },
+    { "name": "date_vente", "type": "date", "required": true, "dateFormat": "YYYY-MM-DD" },
+    {
+      "name": "agence_code",
+      "type": "string",
+      "required": true,
+      "pattern": "^AG-[A-Z]{3}-\\d{4}$"
+    },
     {
       "name": "region",
       "type": "string",
       "required": true,
-      "allowedValues": ["Abidjan", "Bouaké", "Daloa"]
+      "allowedValues": [
+        "Abidjan",
+        "Bouaké",
+        "Yamoussoukro",
+        "Daloa",
+        "San-Pédro",
+        "Korhogo",
+        "Man",
+        "Gagnoa"
+      ]
     },
-    { "name": "montant_fcfa", "type": "integer", "required": true, "positive": true },
-    { "name": "client_id", "type": "string", "required": true, "pattern": "^CLI-\\d{6}$" }
+    {
+      "name": "type_forfait",
+      "type": "string",
+      "required": true,
+      "allowedValues": ["prepaid", "postpaid", "data_only", "fiber"]
+    },
+    { "name": "quantite", "type": "integer", "required": true, "min": 1, "max": 10000 },
+    { "name": "montant_fcfa", "type": "integer", "required": true, "min": 0 },
+    {
+      "name": "client_segment",
+      "type": "string",
+      "required": false,
+      "allowedValues": ["B2C", "B2B", "VIP"]
+    },
+    {
+      "name": "commercial_email",
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-zA-Z0-9._-]+@orange\\.ci$"
+    }
   ],
   "allowExtraColumns": false,
   "trimStrings": true,
   "caseSensitiveHeaders": false,
-  "duplicateKeyColumns": ["client_id", "date"]
+  "duplicateKeyColumns": ["date_vente", "agence_code", "type_forfait"]
 }

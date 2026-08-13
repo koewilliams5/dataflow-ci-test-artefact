@@ -92,7 +92,7 @@ vérification, pas un changement de la base de données.
   occurrence reste valide** — seules les suivantes sont marquées en erreur.
 
 **Pourquoi** : c'est le comportement le plus simple qui reste cohérent avec les fichiers d'exemple
-fournis (`ventes-sale.csv` contient des doublons à l'intérieur du fichier lui-même). Comparer avec
+fournis (`ventes-orange-dirty.csv` contient des doublons à l'intérieur du fichier lui-même). Comparer avec
 tout l'historique déjà envoyé poserait des questions de performance qui dépassent le périmètre de
 cette première version (voir DECISIONS.md, fiche ADR-011, pour le raisonnement complet).
 

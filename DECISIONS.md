@@ -282,7 +282,7 @@ est résolue par la valeur figée à la création du job.
 **Statut** : Proposé
 
 **Contexte** : le brief mentionne les doublons comme un type d'erreur volontairement injecté dans
-`ventes-sale.csv`, sans préciser le périmètre exact de la détection attendue.
+`ventes-orange-dirty.csv`, sans préciser le périmètre exact de la détection attendue.
 
 **Décision** : chaque `SourceColumn` peut être marquée `isUniqueKey`. Le worker considère la
 combinaison des colonnes marquées comme clé et flague en erreur (`duplicate_key`) toute ligne dont

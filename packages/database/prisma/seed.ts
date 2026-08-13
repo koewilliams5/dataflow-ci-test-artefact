@@ -11,30 +11,64 @@ const DEMO_USER_EMAIL = "demo@dataflow-ci.com";
 const DEMO_USER_PASSWORD = "password123";
 const DEMO_SOURCE_NAME = "Ventes Orange CI - Hebdo";
 
-// Reprend l'exemple donné dans le brief Artefact CI.
+// Schéma exact du dépôt de départ Artefact CI (data/source-ventes-orange.json,
+// voir samples/source-ventes-orange.json) — récupéré le 2026-08-13, après avoir
+// eu accès au dépôt (indisponible pendant le développement initial, voir
+// ASSUMPTIONS.md pour l'historique).
 const ventesOrangeSchema: SchemaDefinition = {
   columns: [
-    { name: "date", type: "date", required: true, unique: false, dateFormat: "YYYY-MM-DD" },
+    { name: "date_vente", type: "date", required: true, unique: false, dateFormat: "YYYY-MM-DD" },
+    {
+      name: "agence_code",
+      type: "string",
+      required: true,
+      unique: false,
+      pattern: "^AG-[A-Z]{3}-\\d{4}$",
+    },
     {
       name: "region",
       type: "string",
       required: true,
       unique: false,
-      allowedValues: ["Abidjan", "Bouaké", "Daloa", "Korhogo", "San-Pédro", "Yamoussoukro"],
+      allowedValues: [
+        "Abidjan",
+        "Bouaké",
+        "Yamoussoukro",
+        "Daloa",
+        "San-Pédro",
+        "Korhogo",
+        "Man",
+        "Gagnoa",
+      ],
     },
-    { name: "montant_fcfa", type: "integer", required: true, unique: false, positive: true },
     {
-      name: "client_id",
+      name: "type_forfait",
       type: "string",
       required: true,
       unique: false,
-      pattern: "^CLI-\\d{6}$",
+      allowedValues: ["prepaid", "postpaid", "data_only", "fiber"],
+    },
+    { name: "quantite", type: "integer", required: true, unique: false, min: 1, max: 10000 },
+    { name: "montant_fcfa", type: "integer", required: true, unique: false, min: 0 },
+    {
+      name: "client_segment",
+      type: "string",
+      required: false,
+      unique: false,
+      allowedValues: ["B2C", "B2B", "VIP"],
+    },
+    {
+      name: "commercial_email",
+      type: "string",
+      required: true,
+      unique: false,
+      pattern: "^[a-zA-Z0-9._-]+@orange\\.ci$",
     },
   ],
   allowExtraColumns: false,
   trimStrings: true,
   caseSensitiveHeaders: false,
-  duplicateKeyColumns: ["client_id", "date"],
+  duplicateKeyColumns: ["date_vente", "agence_code", "type_forfait"],
 };
 
 function checksumOf(content: string): string {
@@ -69,9 +103,9 @@ async function main(): Promise<void> {
       dataSourceId: dataSource.id,
       schemaVersionId: schemaVersion.id,
       createdById: user.id,
-      originalFilename: "ventes-clean.csv",
-      originalFileKey: `sources/${dataSource.id}/uploads/ventes-clean.csv`,
-      checksum: checksumOf("ventes-clean.csv-demo-content"),
+      originalFilename: "ventes-orange-clean.csv",
+      originalFileKey: `sources/${dataSource.id}/uploads/ventes-orange-clean.csv`,
+      checksum: checksumOf("ventes-orange-clean.csv-demo-content"),
     });
     await ingestionRepository.markIngestionProcessing(cleanIngestion.id);
     await ingestionRepository.completeIngestion(cleanIngestion.id, {
@@ -82,43 +116,54 @@ async function main(): Promise<void> {
       validFileKey: `sources/${dataSource.id}/exports/${cleanIngestion.id}-valid.csv`,
     });
 
+    // Chiffres et erreurs ci-dessous vérifiés en faisant tourner le vrai moteur
+    // (packages/validation) contre samples/ventes-orange-dirty.csv et ce même
+    // schéma, le 2026-08-13 — pas des valeurs inventées. Seul un sous-ensemble
+    // des 24 erreurs réelles est repris ici, pour rester lisible en démo.
     const dirtyIngestion = await ingestionRepository.createIngestion({
       dataSourceId: dataSource.id,
       schemaVersionId: schemaVersion.id,
       createdById: user.id,
-      originalFilename: "ventes-sale.csv",
-      originalFileKey: `sources/${dataSource.id}/uploads/ventes-sale.csv`,
-      checksum: checksumOf("ventes-sale.csv-demo-content"),
+      originalFilename: "ventes-orange-dirty.csv",
+      originalFileKey: `sources/${dataSource.id}/uploads/ventes-orange-dirty.csv`,
+      checksum: checksumOf("ventes-orange-dirty.csv-demo-content"),
     });
     await ingestionRepository.markIngestionProcessing(dirtyIngestion.id);
     await ingestionRepository.appendIngestionErrors(dirtyIngestion.id, [
       {
-        rowNumber: 4,
-        columnName: "montant_fcfa",
+        rowNumber: 54,
+        columnName: "region",
+        errorCode: "VALUE_NOT_ALLOWED",
+        message: '"Marcory" n\'est pas une valeur autorisée pour "region".',
+        rawValue: "Marcory",
+      },
+      {
+        rowNumber: 58,
+        columnName: "quantite",
         errorCode: "INVALID_INTEGER",
-        message: 'Expected a positive integer, received "abc".',
-        rawValue: "abc",
+        message: '"douze" n\'est pas un entier valide.',
+        rawValue: "douze",
       },
       {
-        rowNumber: 9,
-        columnName: "client_id",
+        rowNumber: 60,
+        columnName: "commercial_email",
         errorCode: "REGEX_MISMATCH",
-        message: 'Expected format CLI-\\d{6}, received "CLI-42".',
-        rawValue: "CLI-42",
+        message: '"k.kouassi@gmail.com" ne respecte pas le format attendu pour "commercial_email".',
+        rawValue: "k.kouassi@gmail.com",
       },
       {
-        rowNumber: 15,
-        columnName: "client_id",
+        rowNumber: 67,
+        columnName: null,
         errorCode: "DUPLICATE_ROW",
-        message: "Duplicate value for key columns (client_id, date) within this file.",
-        rawValue: "CLI-100045",
+        message: "Ligne en double sur les colonnes clé (date_vente, agence_code, type_forfait).",
+        rawValue: null,
       },
     ]);
     await ingestionRepository.completeIngestion(dirtyIngestion.id, {
       status: "PARTIAL",
-      totalRows: 118,
-      validRows: 115,
-      invalidRows: 3,
+      totalRows: 70,
+      validRows: 53,
+      invalidRows: 17,
       validFileKey: `sources/${dataSource.id}/exports/${dirtyIngestion.id}-valid.csv`,
     });
   }

@@ -124,5 +124,8 @@ dans [DEPLOYMENT.md](DEPLOYMENT.md).
   collaborer avec l'assistant IA).
 - [DEPLOYMENT.md](DEPLOYMENT.md) — le guide pour mettre l'application en ligne.
 - [RESTITUTION.md](RESTITUTION.md) — les notes de préparation pour la présentation orale du projet.
-- `samples/` — des fichiers d'exemple prêts pour une démonstration (`source-ventes-orange.json`,
-  `ventes-clean.csv`, `ventes-sale.csv`, `source-stock-banque.json`).
+- `samples/` — les fichiers d'exemple réels du dépôt de départ Artefact CI (`source-ventes-orange.json`,
+  `ventes-orange-clean.csv`, `ventes-orange-dirty.csv`, `source-stock-banque.json`,
+  `stock-banque-clean.csv`, `stock-banque-dirty.csv`). Les fichiers "Ventes Orange" fonctionnent tels
+  quels dans l'application ; les fichiers "Stock Banque" sont conservés pour référence mais ne
+  peuvent pas être envoyés tels quels aujourd'hui (séparateur `;` non géré, voir DESIGN.md §5).

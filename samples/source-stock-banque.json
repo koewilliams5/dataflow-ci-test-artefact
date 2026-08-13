@@ -1,18 +1,32 @@
 {
   "columns": [
-    { "name": "compte_id", "type": "string", "required": true, "pattern": "^ACC-\\d{8}$" },
+    { "name": "date_inventaire", "type": "date", "required": true, "dateFormat": "DD/MM/YYYY" },
+    { "name": "agence_id", "type": "string", "required": true, "pattern": "^BA\\d{5}$" },
+    { "name": "ville", "type": "string", "required": true, "minLength": 2, "maxLength": 50 },
     {
-      "name": "devise",
+      "name": "type_carte",
       "type": "string",
       "required": true,
-      "allowedValues": ["XOF", "EUR", "USD"]
+      "allowedValues": [
+        "VISA_CLASSIC",
+        "VISA_GOLD",
+        "VISA_PLATINUM",
+        "MASTERCARD_STANDARD",
+        "MASTERCARD_WORLD"
+      ]
     },
-    { "name": "solde", "type": "number", "required": true },
-    { "name": "date_releve", "type": "date", "required": true, "dateFormat": "YYYY-MM-DD" },
-    { "name": "actif", "type": "boolean", "required": false }
+    { "name": "stock_disponible", "type": "integer", "required": true, "min": 0, "max": 5000 },
+    { "name": "seuil_alerte", "type": "integer", "required": true, "min": 0 },
+    {
+      "name": "responsable_email",
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-zA-Z0-9._-]+@banqueatlantique\\.ci$"
+    },
+    { "name": "dernier_reapprovisionnement", "type": "date", "required": false, "dateFormat": "DD/MM/YYYY" }
   ],
   "allowExtraColumns": false,
   "trimStrings": true,
   "caseSensitiveHeaders": false,
-  "duplicateKeyColumns": ["compte_id", "date_releve"]
+  "duplicateKeyColumns": ["date_inventaire", "agence_id", "type_carte"]
 }
