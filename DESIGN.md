@@ -1,79 +1,132 @@
-# DESIGN.md — DataFlow CI · Plateforme d'ingestion & validation de fichiers
+# DESIGN.md — DataFlow CI · Comment le projet est construit
 
-> **Statut de ce document** : finalisé. Rédigé au fil de l'eau pendant l'implémentation (voir
-> CLAUDE.md, règle « documente au fil de l'eau ») plutôt que reconstruit a posteriori — chaque
-> section reflète l'état réel du code au moment où elle a été écrite, vérifié par
-> typecheck/lint/test avant d'être documenté comme acquis.
-
----
-
-## 1. Compréhension du besoin
-
-DataFlow CI agrège et revend de la donnée à des clients télécom, banque et grande distribution. Ces
-clients envoient chaque jour des fichiers CSV/Excel, chacun avec son propre format et ses propres
-règles métier. Aujourd'hui, 4 personnes ouvrent ces fichiers à la main, vérifient leur conformité et
-les chargent dans le data warehouse. Le processus est lent, coûteux, et ne laisse aucune trace
-exploitable en cas d'erreur.
-
-Le MVP doit remplacer ce contrôle manuel par une plateforme self-service : déclaration de sources
-avec un schéma attendu (versionnable), upload de fichiers, validation ligne par ligne asynchrone,
-rapport d'ingestion détaillé, export des lignes valides, et un dashboard de suivi.
-
-**Hypothèses fonctionnelles** : voir [ASSUMPTIONS.md](ASSUMPTIONS.md) pour le détail (qui sont les
-utilisateurs, périmètre Excel, gestion des colonnes en trop/manquantes, détection de doublons,
-définition précise des 5 statuts).
+> **À propos de ce document** : il a été écrit au fur et à mesure du développement, pas reconstitué
+> après coup — chaque section correspond à l'état réel du code au moment où elle a été rédigée. Il
+> est volontairement écrit en mots simples, avec les termes techniques expliqués au fil du texte,
+> pour rester compréhensible même sans expérience en programmation.
 
 ---
 
-## 2. Architecture
+## Petit lexique — les mots techniques utilisés dans ce document
+
+- **Monorepo** : un seul dépôt de code qui regroupe plusieurs projets liés (ici : le site web et le
+  programme de traitement en arrière-plan), au lieu d'avoir un dépôt séparé pour chacun.
+- **Worker** : un programme qui tourne en arrière-plan, séparé du site web, et qui fait le travail
+  long (lire et vérifier un fichier). Pendant qu'il travaille, le site reste réactif pour tout le
+  monde.
+- **File d'attente (Redis / BullMQ)** : une liste de tâches à faire, dans l'ordre — dès qu'un fichier
+  est envoyé, une tâche est ajoutée à la liste, et le worker la traite dès qu'il est libre.
+- **Base de données relationnelle (PostgreSQL)** : l'endroit où sont conservées les informations
+  structurées du projet (sources, schémas, résultats), organisées en tables reliées entre elles.
+- **ORM (Prisma)** : un outil qui permet d'écrire des requêtes vers la base de données directement en
+  code, sans écrire de langage de requête (SQL) à la main pour chaque cas.
+- **Stockage de fichiers (S3 / MinIO)** : l'endroit où sont conservés les fichiers eux-mêmes (le
+  CSV/Excel envoyé) — différent de la base de données, qui ne garde que des informations, pas les
+  gros fichiers.
+- **API** : la partie du programme qui répond aux demandes envoyées depuis le navigateur.
+- **Server Component / Client Component** : dans ce projet (construit avec Next.js), une page peut
+  être composée de deux types de morceaux : ceux qui s'exécutent sur le serveur avant l'envoi de la
+  page (accès direct à la base de données, jamais visible depuis le navigateur), et ceux qui
+  s'exécutent dans le navigateur de la personne (interactions, clics, formulaires).
+- **JSONB** : un format flexible qui permet de stocker une petite structure de données (une liste de
+  règles, par exemple) directement dans une case de la base de données, sans avoir à créer une table
+  séparée pour chaque champ possible.
+- **Zod** : un outil qui vérifie, au moment de l'exécution, qu'une donnée a bien la forme attendue
+  avant de l'utiliser — par exemple "ce champ doit être un nombre positif", vérifié réellement au
+  lieu d'être juste une intention écrite en commentaire.
+- **Index (base de données)** : un raccourci que la base de données garde en mémoire pour retrouver
+  des lignes rapidement selon un critère précis, plutôt que de devoir parcourir toute une table à
+  chaque recherche.
+- **Streaming** : lire un fichier morceau par morceau au fur et à mesure, plutôt que de devoir
+  charger le fichier entier en mémoire avant de commencer à le traiter.
+- **Checksum** : une empreinte unique calculée à partir du contenu exact d'un fichier — deux fichiers
+  identiques ont toujours le même checksum, ce qui permet de détecter un renvoi accidentel du même
+  fichier.
+- **Fiche ADR** (*Architecture Decision Record*) : une fiche qui explique une décision technique —
+  le contexte, ce qui a été choisi, les autres options envisagées, et ce que cette décision entraîne
+  comme conséquences. Le détail complet de chaque décision de ce projet est dans
+  [DECISIONS.md](DECISIONS.md).
+- **MVP** (*Minimum Viable Product*, "produit minimum viable") : la version la plus simple d'un
+  produit qui reste réellement utile et utilisable, sans toutes les fonctionnalités possibles.
+
+---
+
+## 1. Le besoin à résoudre
+
+DataFlow CI collecte et revend des données pour des clients télécom, des banques et des enseignes de
+grande distribution. Ces clients envoient chaque jour des fichiers CSV/Excel, chacun avec son propre
+format et ses propres règles. Aujourd'hui, 4 personnes ouvrent ces fichiers à la main, vérifient
+qu'ils sont corrects et les chargent ensuite dans l'entrepôt de données de l'entreprise. Ce contrôle
+manuel est lent, coûteux, et ne laisse aucune trace exploitable quand une erreur passe au travers.
+
+Ce projet remplace ce contrôle manuel par une plateforme où l'on peut : déclarer une source avec un
+schéma attendu (avec un historique de versions), envoyer des fichiers, les faire vérifier ligne par
+ligne en arrière-plan, consulter un rapport détaillé, exporter les lignes correctes, et suivre
+l'activité sur un tableau de bord.
+
+**Les questions laissées ouvertes par le brief** (qui sont les utilisateurs, quels formats Excel,
+comment gérer les colonnes en trop, comment détecter les doublons, ce que veut dire exactement
+chacun des 5 statuts) sont traitées en détail dans [ASSUMPTIONS.md](ASSUMPTIONS.md).
+
+---
+
+## 2. Comment les différentes parties du projet communiquent entre elles
 
 ```mermaid
 flowchart LR
-    U[Utilisateur] -->|HTTPS| WEB["apps/web (Next.js)<br/>UI + Routes API"]
-    WEB -->|upload : stocke, crée Ingestion PENDING, enqueue| S3[(Stockage S3-compatible<br/>MinIO en dev)]
-    WEB -->|enqueue job| Q[(Redis / BullMQ)]
-    WEB -->|lecture/écriture métadonnées| DB[(PostgreSQL)]
-    WK["apps/worker<br/>consumer BullMQ"] -->|consomme| Q
-    WK -->|télécharge fichier, upload export| S3
-    WK -->|met à jour statut/erreurs| DB
-    WK -->|valide via| VAL["packages/validation<br/>(indépendant de Next/Prisma/Redis)"]
-    WEB -->|poll toutes les 2s| WEB
+    U[Personne connectée] -->|via le navigateur| WEB["Site web (Next.js)<br/>Interface + API"]
+    WEB -->|à l'envoi d'un fichier : le range, crée une entrée 'en attente', ajoute une tâche| S3[(Stockage de fichiers<br/>MinIO en local)]
+    WEB -->|ajoute une tâche| Q[(File d'attente<br/>Redis / BullMQ)]
+    WEB -->|lit/écrit les informations| DB[(Base de données<br/>PostgreSQL)]
+    WK["Worker<br/>traite les tâches"] -->|prend une tâche| Q
+    WK -->|télécharge le fichier, dépose l'export| S3
+    WK -->|met à jour le statut/les erreurs| DB
+    WK -->|vérifie via| VAL["Moteur de vérification<br/>(indépendant du reste)"]
+    WEB -->|redemande l'état toutes les 2s| WEB
 ```
 
-Flux d'upload : `web` valide et stocke le fichier → crée un enregistrement d'ingestion `PENDING` →
-enqueue un job → répond immédiatement (jamais bloqué par le traitement). `worker` traite le job en
-arrière-plan (téléchargement, validation via `packages/validation`, upload de l'export, écriture des
-erreurs, statut final) et met à jour la base au fil de l'eau. L'UI poll `GET /api/ingestions/:id`
-toutes les 2 secondes jusqu'à un statut terminal (voir ADR-009).
+Ce que ce schéma montre : quand une personne envoie un fichier, le site web (`web`) le range dans le
+stockage de fichiers, crée une entrée "en attente" dans la base de données, ajoute une tâche dans la
+file d'attente, puis répond tout de suite — sans attendre que le fichier soit vérifié. Le worker,
+séparément, récupère cette tâche dès qu'il est libre, télécharge le fichier, le vérifie ligne par
+ligne à l'aide du moteur de vérification, dépose l'export des lignes correctes, écrit les erreurs
+trouvées, et met à jour le statut final. Pendant ce temps, l'écran du navigateur redemande l'état du
+fichier toutes les 2 secondes (une technique appelée **polling**) jusqu'à ce que le traitement soit
+terminé — plus simple et plus fiable qu'une connexion permanente entre le navigateur et le serveur,
+au prix d'un léger délai d'affichage (voir la fiche ADR-009 dans [DECISIONS.md](DECISIONS.md)).
 
-Résumé de l'architecture retenue (voir [DECISIONS.md](DECISIONS.md) pour la justification complète
-de chaque choix) :
+Résumé des choix retenus (raison complète de chacun dans [DECISIONS.md](DECISIONS.md)) :
 
-- **Monorepo** pnpm workspaces + Turborepo — `apps/web` (Next.js App Router, UI + API), `apps/worker`
-  (process Node/TS indépendant), `packages/*` (domain, database, validation, queue, storage, config).
-- **PostgreSQL + Prisma** pour les métadonnées (sources, schémas, fichiers ingérés, erreurs).
-- **Redis + BullMQ** pour la file de traitement asynchrone, consommée par `apps/worker`.
-- **MinIO (S3-compatible)** pour le stockage des fichiers bruts et des exports CSV.
-- **Auth.js** (Credentials, JWT) pour l'authentification.
+- **Monorepo** avec deux programmes séparés : `apps/web` (le site, avec son interface et son API) et
+  `apps/worker` (le programme de traitement en arrière-plan), plus des morceaux de code partagés
+  entre les deux (`packages/*`).
+- **PostgreSQL + Prisma** pour toutes les informations structurées (sources, schémas, fichiers
+  envoyés, erreurs trouvées).
+- **Redis + BullMQ** pour la file d'attente des tâches de vérification, traitée par le worker.
+- **MinIO** (compatible avec le standard S3) pour conserver les fichiers bruts envoyés et les
+  exports.
+- **Auth.js** pour gérer les connexions par identifiant/mot de passe.
 
 ---
 
-## 3. Modélisation du domaine
+## 3. Comment les informations sont organisées
 
-### 3.1 Entités
+### 3.1 Les 5 types d'informations principales (les "entités")
 
-Cinq entités (voir `packages/database/prisma/schema.prisma`) :
+Le projet distingue 5 types d'informations, chacun rangé dans sa propre table de la base de données
+(détail exact dans `packages/database/prisma/schema.prisma`) :
 
-- **User** — un compte (email, mot de passe hashé).
-- **DataSource** — une source de données déclarée (ex. "Ventes Orange CI - Hebdo"), avec un
-  pointeur `currentSchemaVersionId` vers la version de schéma actuellement active.
-- **SchemaVersion** — une version immuable du schéma attendu d'une source (`definition` en JSONB,
-  voir §3.3). Un `versionNumber` auto-incrémenté, unique par source.
-- **Ingestion** — un fichier uploadé et son traitement : statut, compteurs de lignes, clés de
-  stockage du fichier original et de l'export des lignes valides, checksum.
-- **IngestionError** — une erreur de validation sur une ligne précise d'une `Ingestion`.
+- **User** — un compte utilisateur (adresse email, mot de passe protégé — jamais stocké en clair).
+- **DataSource** — une source de données déclarée (par exemple "Ventes Orange CI - Hebdo"), avec un
+  pointeur vers la version de schéma actuellement utilisée pour vérifier ses fichiers.
+- **SchemaVersion** — une version figée du schéma attendu pour une source (la liste des colonnes et
+  leurs règles). Chaque nouvelle version reçoit un numéro qui s'incrémente, propre à sa source.
+- **Ingestion** — un fichier envoyé et son traitement : statut, nombre de lignes correctes/en
+  erreur, emplacement du fichier original et de l'export des lignes correctes, empreinte du contenu
+  (checksum).
+- **IngestionError** — une erreur trouvée sur une ligne précise d'un fichier envoyé.
 
-### 3.2 Diagramme ER
+### 3.2 Comment ces informations sont reliées entre elles
 
 ```mermaid
 erDiagram
@@ -95,7 +148,7 @@ erDiagram
         uuid id PK
         string name
         string description
-        uuid currentSchemaVersionId FK "UK, nullable"
+        uuid currentSchemaVersionId FK "peut être vide"
         uuid createdById FK
     }
     SCHEMA_VERSION {
@@ -126,18 +179,20 @@ erDiagram
     }
 ```
 
-La relation `DATA_SOURCE ||--o{ SCHEMA_VERSION` (historique complet) et
-`DATA_SOURCE |o--o| SCHEMA_VERSION` (version courante) sont **deux relations Prisma distinctes**
-entre les deux mêmes modèles : l'une portée par `SchemaVersion.dataSourceId` (obligatoire — une
-version appartient toujours à une source), l'autre par `DataSource.currentSchemaVersionId`
-(optionnelle — une source peut exister avant sa première version). Voir ADR-014 dans
-[DECISIONS.md](DECISIONS.md).
+Ce schéma (dit "entité-relation") montre comment chaque type d'information est relié aux autres. Un
+détail technique à noter : une source est reliée à ses schémas de **deux façons différentes** — une
+fois pour dire "voici tout l'historique des versions de cette source" (une source peut en avoir
+plusieurs), et une fois pour dire "voici la version actuellement utilisée pour vérifier les nouveaux
+fichiers" (une source peut ne pas encore en avoir choisi une). Ces deux liens sont enregistrés
+séparément dans la base de données — voir la fiche ADR-014 dans [DECISIONS.md](DECISIONS.md) pour le
+détail.
 
-### 3.3 Format JSON du schéma (`SchemaVersion.definition`)
+### 3.3 Le format d'un schéma (ce qui définit les règles attendues d'une source)
 
-Postgres stocke `definition` en `jsonb` sans contrainte de forme — le contrat réel est un schéma
-Zod dans `packages/domain` (`schemaDefinitionSchema`), qui valide toute écriture avant qu'elle
-n'atteigne la base. Exemple (source "Ventes Orange CI") :
+Techniquement, le champ `definition` d'une `SchemaVersion` est stocké en JSONB — un format flexible,
+sans structure figée imposée par la base de données elle-même. C'est le code de l'application (via
+Zod, dans `packages/domain`) qui garantit que ce qui est écrit respecte bien la forme attendue, à
+chaque fois, avant que ce ne soit enregistré. Exemple concret, pour une source "Ventes Orange CI" :
 
 ```json
 {
@@ -159,218 +214,228 @@ n'atteigne la base. Exemple (source "Ventes Orange CI") :
 }
 ```
 
-Six types de colonne (`string`, `integer`, `number`, `boolean`, `date`, `datetime`), modélisés en
-**union discriminée** sur `type` : chaque type n'expose que les contraintes qui ont un sens pour
-lui (ex. `pattern`/`minLength`/`maxLength` sur `string` uniquement ; `min`/`max`/`positive` sur
-`integer`/`number`/`date`/`datetime` ; `dateFormat` obligatoire sur `date`/`datetime`). `unique`
-(colonne seule) et `duplicateKeyColumns` (clé composite au niveau du schéma, ex. `client_id` +
-`date` ensemble) couvrent deux besoins différents de détection de doublons.
+Six types de colonnes sont possibles (texte, entier, nombre décimal, vrai/faux, date, date+heure).
+Chaque type n'accepte que les règles qui ont du sens pour lui — par exemple, un motif de texte
+(`pattern`) ou une longueur minimale/maximale n'a de sens que pour du texte ; un minimum/maximum n'a
+de sens que pour un nombre ou une date. Le code garantit cette cohérence automatiquement (une
+technique appelée **union discriminée** : "selon la valeur du champ `type`, les autres champs
+autorisés changent").
 
-La validation de la définition elle-même (pas des données d'un fichier) vérifie en plus, par
-raffinement Zod : noms de colonnes uniques, `min ≤ max`, `minLength ≤ maxLength`, `pattern` est une
-regex syntaxiquement valide, et `duplicateKeyColumns` ne référence que des colonnes déclarées.
-22 tests unitaires couvrent les cas valides et invalides (`packages/domain/src/
-schemaDefinition.test.ts`).
+La vérification du schéma lui-même (pas encore des données d'un fichier, juste de la définition des
+règles) contrôle en plus : que les noms de colonnes ne se répètent pas, que le minimum est bien
+inférieur ou égal au maximum, que le motif de texte donné est valide, et que les colonnes citées
+comme "clé pour détecter les doublons" existent bien parmi les colonnes déclarées. 22 tests
+automatiques couvrent les cas valides et invalides de cette vérification.
 
-### 3.4 Invariants principaux
+### 3.4 Règles qui ne changent jamais (les "invariants")
 
-- Une `SchemaVersion` est **immuable** : `packages/database` n'expose aucune fonction de mise à
-  jour d'une version existante (voir `schemaVersionRepository.ts`).
-- Le numéro de version est unique au sein d'une source (`@@unique([dataSourceId, versionNumber])`).
-- Créer une nouvelle version la promeut **automatiquement** en version courante de la source (même
-  transaction : insertion de la version + mise à jour de `DataSource.currentSchemaVersionId`).
-- Une `Ingestion` référence toujours la version de schéma **exacte** utilisée pour la valider —
-  cette référence ne change jamais rétroactivement, même si la source change de version courante
-  ensuite.
-- Une `IngestionError` appartient à exactement une `Ingestion`.
-- **Suppressions** : toutes les relations sont en `onDelete: Restrict` (on ne peut pas supprimer un
-  `User`/`DataSource`/`SchemaVersion` tant qu'il porte de l'historique), sauf
-  `IngestionError → Ingestion` en `Cascade` (une erreur n'a pas de sens sans son ingestion). Voir
-  ADR-015 dans [DECISIONS.md](DECISIONS.md).
+- Une **SchemaVersion**, une fois créée, ne peut plus être modifiée — pour changer les règles, on en
+  crée une nouvelle version, l'ancienne reste consultable telle quelle dans l'historique.
+- Le numéro de version est unique pour une même source (deux sources différentes peuvent chacune
+  avoir leur "version 1").
+- Créer une nouvelle version la fait automatiquement devenir la version active de sa source.
+- Un fichier envoyé (`Ingestion`) garde toujours la référence exacte de la version de schéma qui a
+  servi à le vérifier — même si la source change de version active plus tard, cette référence ne
+  bouge jamais rétroactivement.
+- Une erreur (`IngestionError`) appartient toujours à un seul fichier envoyé.
+- **Suppressions** : par défaut, rien ne peut être supprimé tant qu'il porte de l'historique (par
+  exemple, on ne peut pas supprimer un compte qui a créé des sources) — seule une erreur de
+  vérification peut être supprimée seule, puisqu'elle n'a aucun sens sans le fichier auquel elle se
+  rapporte. Voir la fiche ADR-015 dans [DECISIONS.md](DECISIONS.md).
 
-### 3.5 Index
+### 3.5 Les raccourcis de recherche (index) mis en place
 
-- `DataSource(createdById)` — lister les sources créées par un utilisateur.
-- `SchemaVersion(dataSourceId, versionNumber)` (unique) — sert aussi d'index pour "toutes les
-  versions d'une source" (règle du préfixe gauche : pas d'index séparé sur `dataSourceId` seul).
-- `Ingestion(dataSourceId, createdAt)` — historique d'une source, trié par date (page liste).
-- `Ingestion(schemaVersionId)` — retrouver les ingestions ayant utilisé une version donnée.
-- `Ingestion(status)` — requêtes de monitoring ("tous les fichiers en erreur").
-- `Ingestion(dataSourceId, checksum)` — détecter le ré-upload exact du même fichier sur une source.
-- `IngestionError(ingestionId, rowNumber)` — le seul pattern de lecture des erreurs (toutes les
-  erreurs d'une ingestion, triées par ligne) ; sert aussi de préfixe pour "toutes les erreurs d'une
-  ingestion" sans tri, pas besoin d'un index séparé sur `ingestionId` seul.
+Un index de base de données est comme la table des matières d'un livre : il permet de retrouver des
+lignes rapidement selon un critère précis, sans avoir à relire toute la table à chaque fois. Ceux mis
+en place dans ce projet, et la recherche que chacun accélère :
 
-### 3.6 Moteur de validation (`packages/validation`)
+- Retrouver toutes les sources créées par un utilisateur.
+- Retrouver toutes les versions d'une source (sert aussi à garantir l'unicité du numéro de version).
+- Retrouver l'historique des fichiers d'une source, du plus récent au plus ancien.
+- Retrouver tous les fichiers qui ont utilisé une version de schéma donnée.
+- Retrouver tous les fichiers dans un statut donné (utile pour surveiller "tous les fichiers en
+  échec").
+- Détecter si exactement le même fichier a déjà été envoyé sur la même source (comparaison
+  d'empreintes).
+- Retrouver toutes les erreurs d'un fichier, triées par numéro de ligne — la seule façon dont les
+  erreurs sont jamais consultées dans ce projet.
 
-Package indépendant de Next.js, Prisma, Redis et BullMQ (seule dépendance interne :
-`@dataflow-ci/domain`, pour le type `SchemaDefinition`) — testable et exécutable seul, appelé par
-`apps/worker`. Point d'entrée unique : `validateFile({ fileFormat, fileStream, schema })`.
+### 3.6 Le moteur de vérification (`packages/validation`)
 
-**Étapes du traitement d'un fichier** :
+Ce module ne dépend d'aucune autre brique du projet (ni du site, ni de la base de données, ni de la
+file d'attente) — il peut être testé et exécuté tout seul. Le worker l'appelle avec trois
+informations : le format du fichier, son contenu, et le schéma à respecter.
 
-1. Lecture du flux d'entrée (CSV en streaming via `csv-parse`, XLSX chargé entièrement via
-   `exceljs` — voir ADR-024) ; un fichier illisible ou vide produit une erreur `MALFORMED_FILE`
-   immédiate (`rowNumber: 0`), sans tenter d'aller plus loin.
-2. Normalisation des en-têtes (trim, et casse selon `caseSensitiveHeaders`).
-3. Détection des en-têtes en double (`DUPLICATE_HEADER`).
-4. Vérification des colonnes obligatoires manquantes (`MISSING_REQUIRED_COLUMN`).
-5. Vérification des colonnes non déclarées, sauf si `allowExtraColumns` (`EXTRA_COLUMN`) — colonnes
-   en trop tolérées, elles, sont simplement ignorées (jamais exportées).
-6. Si une erreur de structure (étapes 2-5) est détectée, le fichier n'est pas parcouru ligne par
-   ligne — inutile, la correspondance colonne↔schéma n'est pas fiable.
-7. Pour chaque ligne de données : normalisation des cellules (trim selon `trimStrings`).
-8. Vérification du caractère obligatoire de chaque cellule (`REQUIRED_VALUE`).
-9. Conversion de type (`INVALID_INTEGER`, `INVALID_NUMBER`, `INVALID_BOOLEAN`, `INVALID_DATE`,
-   `INVALID_DATETIME`).
-10. Application des contraintes (`VALUE_NOT_ALLOWED`, `REGEX_MISMATCH`, `MIN_VALUE`, `MAX_VALUE`,
-    `MIN_LENGTH`, `MAX_LENGTH`, `NOT_POSITIVE`) — une cellule s'arrête à la première violation
-    rencontrée (ADR-025), jamais plus d'une erreur par cellule.
-11. Détection de doublons de ligne sur `duplicateKeyColumns` (`DUPLICATE_ROW`) — seules les
-    occurrences suivant la première sont marquées en erreur (voir ASSUMPTIONS.md §4).
-12. Une ligne sans aucune erreur est comptée valide et ajoutée à l'export CSV ; une ligne avec au
-    moins une erreur ne l'est pas (mais toutes ses erreurs sont conservées, pas seulement la
-    première trouvée sur la ligne).
-13. Export des lignes valides en CSV, avec neutralisation de l'injection de formule (`=`, `+`, `-`,
-    `@` en tête de cellule préfixés d'une apostrophe — ADR-026, OWASP "CSV Injection").
+**Les grandes étapes de la vérification d'un fichier** :
 
-**Taxonomie d'erreurs** (19 codes, `packages/validation/src/errorCodes.ts`) : chaque erreur porte
-`rowNumber` (0 = erreur de structure, ≥1 = ligne de données), `columnName`, `errorCode`, `message`
-et `rawValue`. Codes de structure : `MISSING_REQUIRED_COLUMN`, `EXTRA_COLUMN`, `DUPLICATE_HEADER`,
-`MALFORMED_FILE`. Codes de cellule : `REQUIRED_VALUE`, `INVALID_STRING`, `INVALID_INTEGER`,
-`INVALID_NUMBER`, `INVALID_BOOLEAN`, `INVALID_DATE`, `INVALID_DATETIME`, `VALUE_NOT_ALLOWED`,
-`REGEX_MISMATCH`, `MIN_VALUE`, `MAX_VALUE`, `MIN_LENGTH`, `MAX_LENGTH`, `NOT_POSITIVE`. Code de
-ligne : `DUPLICATE_ROW`.
+1. Lecture du fichier — un CSV est lu morceau par morceau (streaming), un Excel est chargé
+   entièrement d'un coup (plus simple, acceptable vu la taille limitée des fichiers acceptés). Un
+   fichier illisible ou vide déclenche tout de suite une erreur claire, sans aller plus loin.
+2. Nettoyage des titres de colonnes (espaces en trop retirés, gestion des majuscules/minuscules
+   selon le réglage choisi pour la source).
+3. Détection de titres de colonnes en double dans l'en-tête du fichier.
+4. Vérification qu'aucune colonne obligatoire du schéma ne manque dans le fichier.
+5. Vérification des colonnes présentes dans le fichier mais non prévues par le schéma — sauf si la
+   source autorise explicitement les colonnes en trop, auquel cas elles sont simplement ignorées.
+6. Si une des quatre étapes précédentes détecte un problème de structure, le fichier n'est **pas**
+   vérifié ligne par ligne — cela n'aurait pas de sens, la correspondance entre les colonnes du
+   fichier et celles attendues n'est pas fiable.
+7. Pour chaque ligne de données : nettoyage des espaces en trop dans chaque case (si activé).
+8. Vérification qu'aucune case obligatoire n'est vide.
+9. Vérification que chaque valeur peut bien être comprise comme le type attendu (un nombre, une
+   date, etc.).
+10. Vérification des règles propres à chaque colonne (valeur dans la liste autorisée, motif de
+    texte respecté, minimum/maximum, longueur) — dès qu'une case a un problème, on s'arrête à la
+    première règle qu'elle enfreint (pas d'accumulation d'erreurs sur une même case).
+11. Détection des lignes en double, selon les colonnes désignées comme "clé" dans le schéma — seule
+    la première apparition reste valide (voir [ASSUMPTIONS.md](ASSUMPTIONS.md) §4).
+12. Une ligne sans aucune erreur est comptée comme correcte et ajoutée à l'export ; une ligne avec au
+    moins une erreur ne l'est pas, mais toutes les erreurs qu'elle contient sont conservées (pas
+    seulement la première trouvée sur la ligne).
+13. Export des lignes correctes dans un fichier CSV, avec une protection : si une case commence par
+    un caractère qui pourrait être interprété comme une formule par Excel (`=`, `+`, `-`, `@`), un
+    caractère neutre est ajouté devant pour empêcher toute exécution automatique à l'ouverture du
+    fichier (une protection standard contre un risque connu, appelé injection CSV).
 
-**Fixtures de test** (`packages/validation/fixtures/`) : `clean.csv` (entièrement valide),
-`partially-invalid.csv` (mélange), `fully-invalid.csv` (aucune ligne valide), `empty.csv` (aucune
-ligne de données), `duplicates.csv` (doublons sur colonnes clé), `extra-columns.csv` (colonne non
-déclarée), `corrupted.xlsx` (fichier non-ZIP avec extension `.xlsx`) — couvrent chacune un scénario
-distinct exercé par `validateFile.test.ts` (68 tests au total dans le package, tous passants).
+**Les types d'erreurs possibles** (19 au total) portent chacune : le numéro de ligne concernée (0
+pour une erreur qui concerne le fichier entier), le nom de la colonne, un code identifiant le type
+de problème, un message lisible, et la valeur brute qui a posé problème. Erreurs qui concernent tout
+le fichier : colonne obligatoire manquante, colonne en trop, titre en double, fichier illisible.
+Erreurs qui concernent une case précise : valeur manquante, mauvais type (texte/nombre/date/etc.),
+valeur non autorisée, motif non respecté, minimum/maximum non respecté, longueur non respectée,
+nombre non positif. Erreur qui concerne une ligne entière : ligne en double.
 
-### 3.7 Dashboard de monitoring
+**Fichiers utilisés pour tester ce moteur** : un fichier entièrement correct, un fichier avec un
+mélange de lignes correctes et incorrectes, un fichier entièrement incorrect, un fichier vide, un
+fichier avec des doublons, un fichier avec des colonnes en trop, et un fichier Excel corrompu —
+chacun couvre un scénario différent, testé automatiquement (75 tests au total dans ce module, tous
+réussis).
 
-Page `/dashboard`, fenêtre par défaut 30 jours glissants (ASSUMPTIONS.md §7), sélecteur 7/30/90
-jours (`?days=`). Cinq KPI en tête (fichiers ingérés, taux de succès, en cours, lignes traitées,
-sources actives), puis trois visualisations Recharts, chacune répondant à une question différente :
+### 3.7 Le tableau de bord de suivi
 
-1. **Ingestions par jour, barres empilées par statut** — répond à "le volume traité augmente ou
-   diminue dans le temps, et la proportion d'échecs évolue-t-elle ?". Une série continue (un point
-   par jour, y compris les jours sans activité, comptés à zéro par `buildDailyStatusSeries`) plutôt
-   qu'une liste éparse, pour un axe des temps lisible sans trous.
-2. **Répartition par statut, donut** — répond à "sur la période, quelle proportion des fichiers a
-   réellement posé problème ?". Une vue proportionnelle instantanée, complémentaire du graphique 1
-   (qui montre l'évolution, pas la part globale).
-3. **Sources les plus actives, barres horizontales** — répond à "d'où vient le volume, et quelles
-   sources méritent une attention si leur taux d'échec est élevé ?". Triée par nombre d'ingestions
-   descendant, limitée aux 5 premières (`getTopSourcesByVolume`) pour rester lisible même avec
-   beaucoup de sources.
+La page `/dashboard` affiche par défaut les 30 derniers jours (voir
+[ASSUMPTIONS.md](ASSUMPTIONS.md) §7), avec un sélecteur pour changer cette période (7/30/90 jours).
+En haut, 5 chiffres clés (fichiers traités, taux de réussite, en cours, lignes traitées, sources
+actives), puis trois graphiques, chacun répondant à une question différente :
 
-Chaque graphique gère explicitement l'absence de donnée (message plutôt qu'un graphique vide ou une
-erreur de rendu) — voir ADR-030 pour le choix de faire porter les agrégations par le Server
-Component plutôt que par une route API dédiée.
+1. **Fichiers traités par jour, en barres empilées par statut** — répond à "le volume traité
+   augmente ou diminue dans le temps, et la part d'échecs évolue-t-elle ?". Un point par jour, même
+   les jours sans activité (comptés à zéro), pour un axe du temps sans trous.
+2. **Répartition par statut, en anneau** — répond à "sur la période choisie, quelle proportion de
+   fichiers a vraiment posé problème ?". Une vue d'ensemble instantanée, complémentaire du premier
+   graphique qui montre plutôt l'évolution dans le temps.
+3. **Sources les plus actives, en barres horizontales** — répond à "d'où vient le volume, et quelles
+   sources méritent une attention particulière si leur taux d'échec est élevé ?". Les 5 sources les
+   plus actives, pour rester lisible même s'il y en a beaucoup.
 
----
-
-## 4. Choix techniques
-
-Voir [DECISIONS.md](DECISIONS.md) pour le détail au format ADR (contexte, alternatives considérées,
-conséquences) de chaque choix structurant : monorepo, Next.js App Router, worker + BullMQ/Redis,
-PostgreSQL + Prisma, modélisation normalisée du schéma de colonnes, Zod pour la validation dynamique,
-MinIO pour le stockage, Auth.js Credentials, polling plutôt que SSE/WebSocket, versionnement de
-schéma figé à l'upload, détection de doublons intra-fichier, packages partagés sans build séparé,
-dépendances du moteur de validation (`csv-parse`/`csv-stringify`/`exceljs`), XLSX chargé en mémoire
-vs CSV en streaming, une seule erreur par cellule, neutralisation de l'injection CSV à l'export,
-statut final dérivé côté worker (pas dans le moteur de validation), téléchargement de l'export via
-redirection vers une URL signée (jamais proxié par Next.js), dashboard sans route API dédiée
-(agrégations directement par le Server Component, période pilotée par un paramètre d'URL).
+Chaque graphique affiche un message clair quand il n'y a pas de donnée à montrer, plutôt qu'un
+graphique vide ou une erreur d'affichage.
 
 ---
 
-## 5. Ce qui marche, ce qui ne marche pas, ce qui manque
+## 4. Détail de chaque choix technique
 
-**Ce qui marche** (implémenté, testé — 192 tests unitaires/intégration mockée, tous passants sur
-tout le monorepo à la fin du challenge) : authentification (Credentials, middleware + vérification
-serveur) ; sources et versions de schéma (création, JSON validé par Zod, immuabilité) ; upload
-(validation taille/extension/magic-bytes, checksum, déduplication) ; queue BullMQ (retries, backoff,
-verrou logique anti race condition, graceful shutdown, healthcheck) ; moteur de validation CSV/XLSX
-complet (19 codes d'erreur, doublons, export sécurisé) ; worker câblé au moteur réel ; rapport
-d'ingestion (polling, erreurs paginées, export via URL signée) ; dashboard (3 visualisations
-Recharts, sélecteur de période) ; Dockerfiles et CI GitHub Actions écrits.
-
-**Ce qui a été vérifié en conditions réelles** : Docker Desktop/WSL2, indisponible en début de
-challenge (voir TASKS.md T02), a fini par être réparé — migrations Prisma réelles, seed réel,
-images Docker `web`/`worker` construites et démarrées en local, puis déploiement complet sur
-Railway (Postgres/Redis managés + Cloudflare R2). Le parcours entier a été rejoué en production :
-connexion, upload d'un fichier avec erreurs volontaires, traitement par le worker, rapport détaillé,
-export CSV des lignes valides, dashboard avec données réelles.
-
-**Ce qui n'a pas pu être vérifié** : le test e2e Playwright (`apps/web/e2e/golden-path.spec.ts`,
-écrit et à jour avec l'interface actuelle) n'a pas été ré-exécuté après la dernière refonte visuelle,
-faute de temps en fin de challenge — le même parcours a cependant été rejoué manuellement de bout en
-bout sur l'environnement déployé (voir ci-dessus).
-
-**Ce qui manque** : détection dédiée des fichiers à encodage invalide (un tel fichier produit
-aujourd'hui des erreurs de validation normales plutôt qu'un diagnostic explicite — voir TASKS.md
-T37) ; formulaire structuré pour l'édition de schéma (JSON brut pour le MVP, voir ADR-016) ;
-détection de doublons contre l'historique déjà ingéré (intra-fichier seulement, voir ADR-011) ;
-gestion de rôles/multi-tenant (single-tenant assumé, voir ASSUMPTIONS.md §1) ; suppression réelle
-(soft-delete) des entités avec historique.
+Le détail complet (contexte, autres options envisagées, conséquences) de chaque choix structurant se
+trouve dans [DECISIONS.md](DECISIONS.md), sous forme de fiches — entre autres : l'organisation en
+monorepo, le choix de Next.js, le worker séparé avec BullMQ/Redis, PostgreSQL + Prisma, la façon de
+modéliser le schéma de colonnes, Zod pour vérifier les données à l'exécution, MinIO pour le stockage,
+l'authentification par identifiant/mot de passe, le choix du polling plutôt qu'une connexion
+permanente, le fait qu'une version de schéma reste figée une fois utilisée par un fichier, la
+détection de doublons à l'intérieur d'un seul fichier, les bibliothèques utilisées pour lire les
+fichiers CSV/Excel, une seule erreur par case plutôt que plusieurs, la protection contre les formules
+cachées dans un export CSV, le téléchargement de l'export via un lien temporaire sécurisé, et le
+tableau de bord qui calcule ses chiffres directement plutôt que via une route d'API séparée.
 
 ---
 
-## 6. Trade-offs assumés
+## 5. Ce qui fonctionne, ce qui a été vérifié, ce qui manque
 
-- **Polling plutôt que SSE/WebSocket** pour le suivi de statut — simplicité et fiabilité derrière
-  n'importe quel hébergeur, au prix d'un délai de rafraîchissement de 2 secondes (ADR-009).
-- **Détection de doublons intra-fichier uniquement**, pas contre l'historique déjà ingéré — évite
-  une question de fenêtre/performance hors périmètre MVP (ADR-011).
-- **Packages partagés consommés en source TypeScript** sans étape de build séparée — plus simple à
-  faire tourner en monorepo, au prix d'un `tsc --noEmit` plutôt qu'une vraie émission (ADR-012).
-- **`definition` en JSONB validé par Zod** plutôt qu'un schéma de colonnes normalisé — Postgres ne
-  peut pas garantir seul la forme du contenu, seule la couche applicative le fait (ADR-013).
-- **XLSX chargé entièrement en mémoire**, CSV en vrai streaming — écart assumé compte tenu du
-  plafond de 10 Mo par fichier (ADR-024).
-- **Une seule erreur par cellule** (arrêt à la première règle violée) — rapport plus lisible, au
-  prix d'un nombre d'erreurs légèrement sous-estimé sur une cellule qui cumule plusieurs problèmes
-  (ADR-025).
-- **Statut final dérivé côté worker**, jamais dans `packages/validation` — garde le moteur de
-  validation indépendant du vocabulaire `Ingestion` (ADR-027).
-- **Dashboard sans route API dédiée** — agrégations calculées directement par le Server Component,
-  au prix de perdre la possibilité de rafraîchissement automatique (pas un besoin du dashboard,
-  contrairement au rapport d'ingestion — ADR-030).
-- **Images Docker sans `output: "standalone"`** — plus lourdes qu'elles ne pourraient l'être, pour
-  rester constructibles/vérifiables aussi bien en local (Windows, cette machine) que dans le
-  conteneur Linux cible (ADR-031).
+**Ce qui fonctionne** (construit et testé — 256 tests automatiques, tous réussis, sur l'ensemble du
+projet) : connexion et protection des pages ; sources et versions de schéma (création, vérification
+par Zod, impossibilité de modifier une version existante) ; envoi de fichier (vérification de la
+taille, du type, du contenu réel, détection des renvois du même fichier) ; file d'attente (nouvelles
+tentatives automatiques en cas de problème, protection contre les doubles traitements, arrêt propre) ;
+moteur de vérification CSV/Excel complet (19 types d'erreurs, doublons, export protégé) ; worker
+relié au vrai moteur de vérification ; rapport détaillé (mise à jour automatique, erreurs par pages,
+export via lien sécurisé) ; tableau de bord (3 graphiques, sélecteur de période) ; mise en ligne
+automatisée à chaque envoi de code (vérifications + déploiement).
+
+**Ce qui a été vérifié en conditions réelles** : l'application est en ligne sur Railway (site +
+worker + base de données + file d'attente gérés par la plateforme, fichiers stockés chez Cloudflare
+R2). Le parcours complet a été rejoué en production : connexion, envoi d'un fichier avec des erreurs
+volontaires, traitement par le worker, rapport détaillé, export des lignes correctes, tableau de bord
+avec de vraies données.
+
+**Fonctionnalités ajoutées en plus du minimum demandé** (voir le brief, section "bonus") : une
+cloche de notifications dans l'application (prévient dès qu'un fichier termine son traitement, sans
+avoir à rester sur la page) et des webhooks sortants (l'application peut prévenir automatiquement un
+système externe quand un fichier est traité, avec une signature de sécurité pour garantir
+l'authenticité du message).
+
+**Ce qui n'a pas pu être vérifié** : le test automatisé qui simule un parcours utilisateur complet
+dans un vrai navigateur (écrit et à jour avec l'interface actuelle) n'a pas été rejoué après la
+dernière refonte visuelle, faute de temps — le même parcours a cependant été rejoué à la main, de
+bout en bout, sur la version en ligne.
+
+**Ce qui manque** : un diagnostic dédié pour les fichiers à l'encodage de texte invalide (un tel
+fichier produit aujourd'hui des erreurs de vérification normales plutôt qu'un message explicite) ;
+un vrai formulaire pour créer/modifier un schéma (aujourd'hui, on écrit du JSON directement, avec une
+assistance IA facultative) ; la détection de doublons contre l'historique déjà envoyé (seulement à
+l'intérieur d'un même fichier pour l'instant) ; un cloisonnement par client (une seule liste de
+sources partagée par tous les utilisateurs) ; une suppression "douce" (récupérable) des éléments qui
+gardent un historique.
 
 ---
 
-## 7. Next steps (si 2 semaines de plus)
+## 6. Compromis assumés
 
-1. **Vérifier tout ce qui n'a pas pu l'être** : migrations/seed réels, tests e2e Playwright, build
-   et exécution des images Docker, un vrai déploiement — priorité absolue avant toute nouvelle
-   fonctionnalité, puisque c'est la plus grosse zone d'incertitude du livrable actuel.
-   `output: "standalone"` (ADR-031) serait le premier point à revalider dans un environnement Linux.
-2. **Formulaire structuré d'édition de schéma** (au lieu du JSON brut, ADR-016) — le chantier UI le
-   plus significatif reporté du MVP.
-3. **Détection de doublons contre l'historique** déjà ingéré d'une source, pas seulement
-   intra-fichier (ADR-011) — nécessite une stratégie de fenêtre/performance à concevoir.
-4. **SSE ou WebSocket** en remplacement du polling pour le rapport d'ingestion (ADR-009), une fois
-   la fiabilité de l'infrastructure de production éprouvée.
-5. **Multi-tenant** : isolation des sources par client (ASSUMPTIONS.md §1) si DataFlow CI veut
-   exposer la plateforme directement à ses clients plutôt qu'à ses seuls opérateurs internes.
-6. **Détection dédiée de l'encodage invalide** (T37) avec un code d'erreur explicite plutôt qu'un
-   résultat de validation générique.
-7. **CD** : pipeline de déploiement continu sur push `main`, une fois un environnement de production
-   réel en place (T47, dépend de T45).
+- **Redemander l'état toutes les 2 secondes plutôt qu'une connexion permanente** pour suivre l'avancement d'un
+  fichier — plus simple et plus fiable derrière n'importe quel hébergeur, au prix d'un léger délai
+  d'affichage.
+- **Détection de doublons seulement à l'intérieur d'un même fichier**, pas contre l'historique déjà
+  envoyé — évite une question de performance qui dépasse le périmètre de cette première version.
+- **Le code partagé entre les projets est utilisé directement**, sans étape de compilation séparée —
+  plus simple à faire tourner dans cette organisation en monorepo, au prix d'une vérification de
+  type un peu moins stricte qu'une vraie compilation.
+- **Le format d'un schéma est stocké en JSONB et vérifié par du code**, plutôt que dans une structure
+  de table figée — la base de données ne peut pas garantir seule la forme du contenu, c'est le code
+  de l'application qui s'en charge.
+- **Les fichiers Excel sont chargés entièrement en mémoire**, les fichiers CSV sont lus morceau par
+  morceau — un écart assumé compte tenu de la taille maximale de 10 Mo par fichier.
+- **Une seule erreur signalée par case** (on s'arrête à la première règle enfreinte) — un rapport
+  plus lisible, au prix d'un nombre d'erreurs légèrement sous-estimé sur une case qui cumule
+  plusieurs problèmes à la fois.
+- **Le statut final d'un fichier est calculé par le worker**, jamais par le moteur de vérification
+  lui-même — pour que ce moteur reste indépendant du vocabulaire propre à ce projet.
+- **Le tableau de bord calcule ses chiffres directement**, sans passer par une route d'API séparée —
+  au prix de perdre la possibilité d'un rafraîchissement automatique (pas un besoin réel pour cette
+  page, contrairement au rapport d'un fichier).
+
+---
+
+## 7. Suites possibles (si deux semaines de plus étaient disponibles)
+
+1. **Vérifier tout ce qui n'a pas pu l'être** : rejouer le test automatisé qui simule un vrai
+   parcours utilisateur dans un navigateur, après la dernière refonte visuelle.
+2. **Un vrai formulaire pour créer/modifier un schéma**, au lieu d'écrire du JSON directement — le
+   chantier d'interface le plus important resté en attente.
+3. **Détection de doublons contre l'historique déjà envoyé** d'une source, pas seulement à
+   l'intérieur d'un même fichier — nécessite de réfléchir à l'impact sur la vitesse de traitement.
+4. **Une vraie connexion en direct** (plutôt que redemander l'état toutes les 2 secondes) pour le
+   rapport d'un fichier, une fois la fiabilité de l'infrastructure de production éprouvée sur la
+   durée.
+5. **Cloisonnement par client** (chaque client ne voit que ses propres sources) si DataFlow CI
+   souhaite un jour ouvrir la plateforme directement à ses clients plutôt qu'à ses seuls employés.
+6. **Un diagnostic dédié pour les fichiers à l'encodage invalide**, avec un message d'erreur
+   explicite plutôt qu'un résultat de vérification générique.
+7. **Un vrai système de nouvelle tentative pour les webhooks** en cas d'échec de livraison — pour
+   l'instant, un webhook manqué n'est pas rattrapé automatiquement.
 
 ---
 
 ## Annexes
 
-- Plan d'analyse détaillé (cas d'usage, risques, modèle de données complet, arborescence, planning
-  14 jours, questions au tuteur) : conservé dans l'historique de conception du projet, repris section
-  par section dans ce document au fur et à mesure de l'implémentation.
-- [TASKS.md](TASKS.md) — backlog détaillé par épique.
-- [ASSUMPTIONS.md](ASSUMPTIONS.md) — hypothèses fonctionnelles.
-- [DECISIONS.md](DECISIONS.md) — décisions techniques (ADR).
+- [TASKS.md](TASKS.md) — la liste détaillée des tâches réalisées, par groupe de fonctionnalités.
+- [ASSUMPTIONS.md](ASSUMPTIONS.md) — les questions laissées ouvertes par le brief, et les réponses
+  retenues.
+- [DECISIONS.md](DECISIONS.md) — le détail technique de chaque décision structurante.
