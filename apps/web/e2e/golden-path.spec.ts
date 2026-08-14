@@ -28,9 +28,8 @@ async function waitForHydration(page: Page): Promise<void> {
  * Nécessite une infrastructure locale complète et démarrée : Postgres/Redis/
  * MinIO migrés et seedés (`pnpm db:migrate && pnpm db:seed`), `apps/web`
  * ET `apps/worker` tous les deux lancés (le rapport ne progresse jamais
- * au-delà de PENDING sans le worker). Voir TASKS.md T42 pour le statut
- * d'exécution réel : écrit et prêt, jamais lancé sur cette machine
- * (Docker Desktop/WSL2 indisponible pendant tout le développement).
+ * au-delà de PENDING sans le worker). Voir TASKS.md T42 pour l'historique
+ * d'exécution réel.
  */
 test("login → création source → schéma → upload → rapport", async ({ page }) => {
   const sourceName = `Source e2e ${Date.now()}`;
@@ -39,7 +38,9 @@ test("login → création source → schéma → upload → rapport", async ({ p
     await page.goto("/login");
     await waitForHydration(page);
     await page.getByLabel("Adresse e-mail").fill("demo@dataflow-ci.com");
-    await page.getByLabel("Mot de passe").fill("password123");
+    // exact: true — sinon le bouton "Afficher le mot de passe" (aria-label
+    // contenant "mot de passe" en sous-chaîne) matche aussi ce sélecteur.
+    await page.getByLabel("Mot de passe", { exact: true }).fill("password123");
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page).toHaveURL(/\/dashboard/);
   });
@@ -64,7 +65,11 @@ test("login → création source → schéma → upload → rapport", async ({ p
     await page.getByLabel("Source").selectOption({ label: sourceName });
     await page.setInputFiles('input[type="file"]', path.join(fixturesDir, "clean.csv"));
     await page.getByRole("button", { name: "Uploader" }).click();
-    await expect(page).toHaveURL(/\/ingestions\/[a-f0-9-]+/, { timeout: 20_000 });
+    // Timeout large : premier appel à /api/ingestions dans un process de dev
+    // fraîchement démarré, observé jusqu'à 17s à lui seul (compilation à
+    // froid de la route, qui embarque BullMQ) — un coût ponctuel, jamais
+    // revu sur les appels suivants dans le même process.
+    await expect(page).toHaveURL(/\/ingestions\/[a-f0-9-]+/, { timeout: 45_000 });
   });
 
   await test.step("le rapport atteint un statut terminal (le worker doit tourner)", async () => {

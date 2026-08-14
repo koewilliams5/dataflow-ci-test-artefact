@@ -365,18 +365,16 @@ automatisée à chaque envoi de code (vérifications + déploiement).
 worker + base de données + file d'attente gérés par la plateforme, fichiers stockés chez Cloudflare
 R2). Le parcours complet a été rejoué en production : connexion, envoi d'un fichier avec des erreurs
 volontaires, traitement par le worker, rapport détaillé, export des lignes correctes, tableau de bord
-avec de vraies données.
+avec de vraies données. Le test automatisé qui simule ce même parcours dans un vrai navigateur a
+aussi été rejoué en local le 2026-08-14, après la refonte visuelle et tous les ajouts depuis
+(notifications, webhooks, séparateur CSV configurable) — deux régressions réelles trouvées et
+corrigées au passage (voir TASKS.md T42).
 
 **Fonctionnalités ajoutées en plus du minimum demandé** (voir le brief, section "bonus") : une
 cloche de notifications dans l'application (prévient dès qu'un fichier termine son traitement, sans
 avoir à rester sur la page) et des webhooks sortants (l'application peut prévenir automatiquement un
 système externe quand un fichier est traité, avec une signature de sécurité pour garantir
 l'authenticité du message).
-
-**Ce qui n'a pas pu être vérifié** : le test automatisé qui simule un parcours utilisateur complet
-dans un vrai navigateur (écrit et à jour avec l'interface actuelle) n'a pas été rejoué après la
-dernière refonte visuelle, faute de temps — le même parcours a cependant été rejoué à la main, de
-bout en bout, sur la version en ligne.
 
 **Ce qui manque** : un diagnostic dédié pour les fichiers à l'encodage de texte invalide (un tel
 fichier produit aujourd'hui des erreurs de vérification normales plutôt qu'un message explicite) ;
@@ -426,22 +424,20 @@ exemple (mentionnée ci-dessus) reste hors périmètre.
 
 ## 7. Suites possibles (si deux semaines de plus étaient disponibles)
 
-1. **Vérifier tout ce qui n'a pas pu l'être** : rejouer le test automatisé qui simule un vrai
-   parcours utilisateur dans un navigateur, après la dernière refonte visuelle.
-2. **Un vrai formulaire pour créer/modifier un schéma**, au lieu d'écrire du JSON directement — le
+1. **Un vrai formulaire pour créer/modifier un schéma**, au lieu d'écrire du JSON directement — le
    chantier d'interface le plus important resté en attente.
-3. **Détection de doublons contre l'historique déjà envoyé** d'une source, pas seulement à
+2. **Détection de doublons contre l'historique déjà envoyé** d'une source, pas seulement à
    l'intérieur d'un même fichier — nécessite de réfléchir à l'impact sur la vitesse de traitement.
-4. **Une vraie connexion en direct** (plutôt que redemander l'état toutes les 2 secondes) pour le
+3. **Une vraie connexion en direct** (plutôt que redemander l'état toutes les 2 secondes) pour le
    rapport d'un fichier, une fois la fiabilité de l'infrastructure de production éprouvée sur la
    durée.
-5. **Cloisonnement par client** (chaque client ne voit que ses propres sources) si DataFlow CI
+4. **Cloisonnement par client** (chaque client ne voit que ses propres sources) si DataFlow CI
    souhaite un jour ouvrir la plateforme directement à ses clients plutôt qu'à ses seuls employés.
-6. **Un diagnostic dédié pour les fichiers à l'encodage invalide**, avec un message d'erreur
+5. **Un diagnostic dédié pour les fichiers à l'encodage invalide**, avec un message d'erreur
    explicite plutôt qu'un résultat de vérification générique.
-7. **Un vrai système de nouvelle tentative pour les webhooks** en cas d'échec de livraison — pour
+6. **Un vrai système de nouvelle tentative pour les webhooks** en cas d'échec de livraison — pour
    l'instant, un webhook manqué n'est pas rattrapé automatiquement.
-8. **Des règles de vérification qui comparent deux colonnes entre elles** sur une même ligne (ex.
+7. **Des règles de vérification qui comparent deux colonnes entre elles** sur une même ligne (ex.
    une date antérieure à une autre) — le moteur ne vérifie aujourd'hui que colonne par colonne.
 
 ---
