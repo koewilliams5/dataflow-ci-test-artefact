@@ -104,7 +104,7 @@ describe("GET /api/ingestions/[id]", () => {
     expect(body.hasExport).toBe(false);
   });
 
-  it("utilise page=1 et pageSize=50 par défaut", async () => {
+  it("utilise page=1 et pageSize=5 par défaut", async () => {
     findIngestionById.mockResolvedValue(BASE_INGESTION);
 
     await GET(new Request("http://localhost/api/ingestions/ingestion-1"), {
@@ -113,7 +113,7 @@ describe("GET /api/ingestions/[id]", () => {
 
     expect(listIngestionErrorsPage).toHaveBeenCalledWith("ingestion-1", {
       page: 1,
-      pageSize: 50,
+      pageSize: 5,
     });
   });
 
@@ -152,7 +152,7 @@ describe("GET /api/ingestions/[id]", () => {
 
     expect(listIngestionErrorsPage).toHaveBeenCalledWith("ingestion-1", {
       page: 1,
-      pageSize: 50,
+      pageSize: 5,
     });
   });
 

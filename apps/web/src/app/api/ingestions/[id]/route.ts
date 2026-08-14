@@ -8,7 +8,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-const DEFAULT_PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 5;
 const MAX_PAGE_SIZE = 200;
 
 function parsePositiveInt(value: string | null, fallback: number, max?: number): number {

@@ -47,7 +47,7 @@ interface IngestionReportData {
 const TERMINAL_STATUSES = new Set<IngestionStatus>(["SUCCESS", "PARTIAL", "FAILED"]);
 // Voir ADR-009 : polling toutes les 2 secondes, pas de SSE/WebSocket dans ce MVP.
 const POLL_INTERVAL_MS = 2000;
-const PAGE_SIZE_OPTIONS = [10, 15, 20, 30, 50] as const;
+const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 30, 50] as const;
 
 export function IngestionReport({
   ingestionId,

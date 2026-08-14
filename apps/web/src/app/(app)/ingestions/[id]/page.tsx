@@ -7,7 +7,7 @@ interface IngestionDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-const DEFAULT_PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 5;
 
 export default async function IngestionDetailPage({ params }: IngestionDetailPageProps) {
   const { id } = await params;
