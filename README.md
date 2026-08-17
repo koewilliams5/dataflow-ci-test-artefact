@@ -123,7 +123,6 @@ dans [DEPLOYMENT.md](DEPLOYMENT.md).
 - [CLAUDE.md](CLAUDE.md) — les règles de travail suivies sur ce dépôt (conventions de code, façon de
   collaborer avec l'assistant IA).
 - [DEPLOYMENT.md](DEPLOYMENT.md) — le guide pour mettre l'application en ligne.
-- [RESTITUTION.md](RESTITUTION.md) — les notes de préparation pour la présentation orale du projet.
 - `samples/` — les fichiers d'exemple réels du dépôt de départ Artefact CI (`source-ventes-orange.json`,
   `ventes-orange-clean.csv`, `ventes-orange-dirty.csv`, `source-stock-banque.json`,
   `stock-banque-clean.csv`, `stock-banque-dirty.csv`). Tous fonctionnent tels quels dans

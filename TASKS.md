@@ -230,7 +230,7 @@ schéma de données lui-même, pas par une règle applicative à faire respecter
 
 **Critères d'acceptation**
 
-- T43 : ✅ `.github/workflows/ci.yml` — sur chaque push/PR vers `master` : install, `typecheck`, `lint`, `test`, `build` sur tout le monorepo. Ne nécessite aucune infrastructure réelle (tous les tests sont mockés). Vérifié en conditions réelles (runs GitHub Actions passants) après correction du déclencheur (`main` → `master`, voir DECISIONS.md/RESTITUTION.md §4).
+- T43 : ✅ `.github/workflows/ci.yml` — sur chaque push/PR vers `master` : install, `typecheck`, `lint`, `test`, `build` sur tout le monorepo. Ne nécessite aucune infrastructure réelle (tous les tests sont mockés). Vérifié en conditions réelles (runs GitHub Actions passants) après correction du déclencheur (`main` → `master`, voir DECISIONS.md).
 - T44 : ✅ `apps/web/Dockerfile` et `apps/worker/Dockerfile` — build multi-étapes `turbo prune` (voir ADR-031 pour le choix de ne pas utiliser `output: "standalone"`). `.dockerignore` à la racine. Construits et vérifiés en conditions réelles à chaque déploiement Railway.
 - T45 : ✅ déployé sur Railway (`web` + `worker` + Postgres + Redis managés) + Cloudflare R2 pour le stockage — voir DEPLOYMENT.md.
 - T46 : ✅ `prisma migrate deploy` intégré au `CMD` de `apps/web/Dockerfile` et `apps/worker/Dockerfile` (avant le vrai démarrage du serveur/worker) — idempotent, sûr en cas de démarrage concurrent des deux services. Vérifié par un build + run complet des deux images en local contre la base de données locale, le 2026-08-13. Documenté dans DEPLOYMENT.md §4, avec le piège Railway Console (migrations manuelles) qui a motivé cette automatisation.
