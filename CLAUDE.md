@@ -37,6 +37,9 @@ packages/validation   Construit un validateur à partir d'une SchemaVersion.defi
 packages/queue        Connexion BullMQ + types de jobs partagés web/worker
 packages/storage      Wrapper S3/MinIO (upload, download, presigned URL)
 packages/config       Validation des variables d'env (zod), tsconfig/eslint partagés
+packages/ai           Client Ollama (endpoint compatible OpenAI) pour les fonctionnalités IA
+                       optionnelles (inférence de schéma, explication d'erreurs d'ingestion) —
+                       voir ADR-034/035 dans DECISIONS.md
 ```
 
 Modèle de données : `User`, `DataSource`, `SchemaVersion`, `Ingestion`, `IngestionError` (voir
