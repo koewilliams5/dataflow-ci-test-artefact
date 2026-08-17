@@ -43,18 +43,18 @@ Résumé de ce que chaque composant a besoin en production :
 
 | Variable               | `web` | `worker` | Notes                                                                                                          |
 | ---------------------- | :---: | :------: | -------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`         |  ✅   |    ✅    | Postgres managé recommandé (voir §5) — jamais le Postgres de dev.                                              |
-| `REDIS_URL`            |  ✅   |    ✅    | Redis managé recommandé.                                                                                       |
-| `S3_ENDPOINT`          |  ✅   |    ✅    | URL du service S3-compatible en production (voir ADR-032).                                                     |
-| `S3_REGION`            |  ✅   |    ✅    |                                                                                                                |
-| `S3_BUCKET`            |  ✅   |    ✅    | Créé à l'avance, avec les bonnes permissions (voir §6).                                                        |
-| `S3_ACCESS_KEY_ID`     |  ✅   |    ✅    | Secret — jamais en clair dans les logs/CI.                                                                     |
-| `S3_SECRET_ACCESS_KEY` |  ✅   |    ✅    | Secret.                                                                                                        |
-| `S3_FORCE_PATH_STYLE`  |  ✅   |    ✅    | `false` pour un vrai service S3 managé (AWS S3, Scaleway...) — `true` n'est nécessaire que pour MinIO.         |
-| `AUTH_SECRET`          |  ✅   |    —     | Secret — générer une nouvelle valeur pour la prod (`openssl rand -base64 32`), jamais réutiliser celle de dev. |
-| `AUTH_URL`             |  ✅   |    —     | URL publique de `web` en production (ex. `https://dataflow-ci.example.com`).                                   |
-| `NODE_ENV`             |  ✅   |    ✅    | `production`.                                                                                                  |
-| `HEALTHCHECK_PORT`     |   —   |    ✅    | Port du serveur de healthcheck du worker (défaut 3001).                                                        |
+| `DATABASE_URL`         |  Oui   |    Oui    | Postgres managé recommandé (voir §5) — jamais le Postgres de dev.                                              |
+| `REDIS_URL`            |  Oui   |    Oui    | Redis managé recommandé.                                                                                       |
+| `S3_ENDPOINT`          |  Oui   |    Oui    | URL du service S3-compatible en production (voir ADR-032).                                                     |
+| `S3_REGION`            |  Oui   |    Oui    |                                                                                                                |
+| `S3_BUCKET`            |  Oui   |    Oui    | Créé à l'avance, avec les bonnes permissions (voir §6).                                                        |
+| `S3_ACCESS_KEY_ID`     |  Oui   |    Oui    | Secret — jamais en clair dans les logs/CI.                                                                     |
+| `S3_SECRET_ACCESS_KEY` |  Oui   |    Oui    | Secret.                                                                                                        |
+| `S3_FORCE_PATH_STYLE`  |  Oui   |    Oui    | `false` pour un vrai service S3 managé (AWS S3, Scaleway...) — `true` n'est nécessaire que pour MinIO.         |
+| `AUTH_SECRET`          |  Oui   |    —     | Secret — générer une nouvelle valeur pour la prod (`openssl rand -base64 32`), jamais réutiliser celle de dev. |
+| `AUTH_URL`             |  Oui   |    —     | URL publique de `web` en production (ex. `https://dataflow-ci.example.com`).                                   |
+| `NODE_ENV`             |  Oui   |    Oui    | `production`.                                                                                                  |
+| `HEALTHCHECK_PORT`     |   —   |    Oui    | Port du serveur de healthcheck du worker (défaut 3001).                                                        |
 
 Aucun secret ne doit être committé — ils sont injectés par la plateforme d'hébergement (variables
 d'environnement du service), jamais via un fichier `.env` copié dans l'image (voir `.dockerignore`).
